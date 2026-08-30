@@ -77,6 +77,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create SBOM output directory
+        run: mkdir -p build
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
@@ -84,4 +86,5 @@ jobs:
           format: spdx-json
           artifact-name: deskforge-sbom.spdx.json
           output-file: build/deskforge-sbom.spdx.json
+          syft-version: v1.51.1
           upload-artifact-retention: 14

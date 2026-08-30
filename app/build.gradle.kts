@@ -26,7 +26,12 @@ fun toolchainString(name: String): String = requireNotNull(androidToolchain.getP
 
 android {
     namespace = "com.deskforge.app"
-    compileSdk = toolchainInt("compileSdk")
+    compileSdk {
+        version = release(toolchainInt("compileSdk")) {
+            // Android 17's current finalized SDK is published as a minor API platform.
+            minorApiLevel = toolchainInt("compileSdkMinor")
+        }
+    }
     buildToolsVersion = toolchainString("buildToolsVersion")
     ndkVersion = toolchainString("ndkVersion")
 

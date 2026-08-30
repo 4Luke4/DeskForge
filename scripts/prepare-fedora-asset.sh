@@ -17,7 +17,7 @@ mkdir -p "${working_directory}"
 curl --fail --location --retry 3 "${checksum_url}" --output "${working_directory}/CHECKSUM"
 curl --fail --location --retry 3 https://fedoraproject.org/fedora.gpg --output "${working_directory}/fedora.gpg"
 gpgv --keyring "${working_directory}/fedora.gpg" "${working_directory}/CHECKSUM"
-rg -F "SHA256 (${image_name}) = ${expected_sha256}" "${working_directory}/CHECKSUM" >/dev/null
+grep --fixed-strings --quiet "SHA256 (${image_name}) = ${expected_sha256}" "${working_directory}/CHECKSUM"
 
 curl --fail --location --retry 3 "${image_url}" --output "${working_directory}/${image_name}"
 echo "${expected_sha256}  ${working_directory}/${image_name}" | sha256sum --check --strict
@@ -34,7 +34,7 @@ fi
 
 # guestfish reads the filesystem without root privileges and retains Linux metadata in the tar.
 guestfish --ro -a "${root_image}" -m /dev/sda tar-out / "${uncompressed_archive}"
-tar --list --file "${uncompressed_archive}" | rg '(^|/)usr/bin/startxfce4$' >/dev/null
+tar --list --file "${uncompressed_archive}" | grep --extended-regexp --quiet '(^|/)usr/bin/startxfce4$'
 gzip --best --no-name --stdout "${uncompressed_archive}" > "${output_archive}"
 
 # Fail before AAB assembly if the compressed payload cannot fit the current single-pack prototype.

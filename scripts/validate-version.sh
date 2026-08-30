@@ -9,7 +9,7 @@ if [[ ! "${version}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9
   exit 1
 fi
 
-if ! rg -F "${version}" "${repository_root}/CHANGELOG.md" >/dev/null; then
+if ! grep --fixed-strings --quiet "${version}" "${repository_root}/CHANGELOG.md"; then
   echo "CHANGELOG.md does not mention VERSION ${version}" >&2
   exit 1
 fi
