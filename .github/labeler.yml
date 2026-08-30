@@ -1,0 +1,21 @@
+area/android:
+  - changed-files:
+      - any-glob-to-any-file: ["app/src/main/java/**", "app/src/main/res/**", "app/build.gradle.kts", "config/android/**"]
+area/native:
+  - changed-files:
+      - any-glob-to-any-file: ["app/src/main/cpp/**"]
+area/runtime:
+  - changed-files:
+      - any-glob-to-any-file: ["config/proot/**", "config/distros/**", "fedora_xfce_44/**"]
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/workflows/**", ".github/dependabot.yml", "scripts/**"]
+area/localization:
+  - changed-files:
+      - any-glob-to-any-file: ["app/src/main/res/values-*/**", "app/src/main/res/xml/locales_config.xml"]
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md"]
+security:
+  - changed-files:
+      - any-glob-to-any-file: ["SECURITY.md", "docs/architecture/THREAT_MODEL.md", ".github/workflows/security.yml"]

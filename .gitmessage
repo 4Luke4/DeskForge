@@ -1,0 +1,14 @@
+# <type>[optional scope][!]: <description>
+#
+# [optional body]
+#
+# [optional footer(s)]
+#
+# Use Conventional Commits 1.0.0:
+# https://www.conventionalcommits.org/en/v1.0.0/
+#
+# Allowed types: build, chore, ci, docs, feat, fix, perf, refactor,
+# revert, style, test.
+#
+# Keep the description imperative, lower-case, and at most 100 characters.
+# Add ! and a BREAKING CHANGE footer for incompatible behavior.

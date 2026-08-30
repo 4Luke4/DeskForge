@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">您的本地 Linux 工作空间</string>
+    <string name="navigation_workspaces">工作空间</string>
+    <string name="navigation_diagnostics">诊断</string>
+    <string name="navigation_settings">设置</string>
+    <string name="welcome_title">打造专为平板电脑设计的桌面</string>
+    <string name="welcome_body">在本地运行私密的 Fedora XFCE 工作空间，并集成平板、键盘、鼠标和音频。</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">官方 AArch64 映像 · 通过 Play 分发</string>
+    <string name="status_ready">可以安装</string>
+    <string name="status_installed">已安装</string>
+    <string name="status_running">正在运行</string>
+    <string name="action_install">安装工作空间</string>
+    <string name="action_start">启动桌面</string>
+    <string name="action_stop">停止会话</string>
+    <string name="action_import">导入根文件系统</string>
+    <string name="renderer_accelerated">加速渲染</string>
+    <string name="renderer_software">软件后备渲染</string>
+    <string name="microphone_label">来宾麦克风</string>
+    <string name="microphone_summary">默认关闭。Linux 会话捕获音频前，Android 会请求权限。</string>
+    <string name="diagnostics_title">运行时诊断</string>
+    <string name="diagnostics_empty">运行检查以确认 PRoot、图形、音频和输入设备是否就绪。</string>
+    <string name="action_check">运行能力检查</string>
+    <string name="runtime_unavailable">此版本中未安装经过验证的 PRoot 运行时。</string>
+    <string name="desktop_preview">Linux 桌面画面</string>
+    <string name="release_gate">原型版本 · 发布前必须通过实体平板电脑验证</string>
+    <string name="status_available">可用</string>
+    <string name="status_unavailable">不可用</string>
+    <string name="diagnostics_version_code">版本代码 %1$d</string>
+</resources>

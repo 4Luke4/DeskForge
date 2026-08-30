@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">DeskForge</string>
+    <string name="brand_tagline">Your local Linux workspace</string>
+    <string name="navigation_workspaces">Workspaces</string>
+    <string name="navigation_diagnostics">Diagnostics</string>
+    <string name="navigation_settings">Settings</string>
+    <string name="welcome_title">Forge a desktop built for your tablet</string>
+    <string name="welcome_body">Run a private Fedora XFCE workspace locally, with tablet, keyboard, mouse, and audio integration.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Official AArch64 image · Play-delivered</string>
+    <string name="status_ready">Ready to install</string>
+    <string name="status_installed">Installed</string>
+    <string name="status_running">Running</string>
+    <string name="action_install">Install workspace</string>
+    <string name="action_start">Start desktop</string>
+    <string name="action_stop">Stop session</string>
+    <string name="action_import">Import root filesystem</string>
+    <string name="renderer_accelerated">Accelerated renderer</string>
+    <string name="renderer_software">Software fallback</string>
+    <string name="microphone_label">Guest microphone</string>
+    <string name="microphone_summary">Off by default. Android asks before a Linux session can capture audio.</string>
+    <string name="diagnostics_title">Runtime diagnostics</string>
+    <string name="diagnostics_empty">Start a capability check to inspect PRoot, graphics, audio, and input readiness.</string>
+    <string name="action_check">Run capability check</string>
+    <string name="runtime_unavailable">The verified PRoot runtime is not installed in this build.</string>
+    <string name="desktop_preview">Linux desktop surface</string>
+    <string name="release_gate">Prototype build · Physical tablet qualification required before release</string>
+    <string name="status_available">Available</string>
+    <string name="status_unavailable">Unavailable</string>
+    <string name="diagnostics_version_code">Version code %1$d</string>
+</resources>

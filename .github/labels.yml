@@ -1,0 +1,63 @@
+- name: accessibility
+  color: "f143ab"
+  description: Barrier affecting people with disabilities
+- name: bug
+  color: "d73a4a"
+  description: Confirmed or reported defect
+- name: documentation
+  color: "0075ca"
+  description: Documentation changes
+- name: enhancement
+  color: "a2eeef"
+  description: New capability or improvement
+- name: needs-triage
+  color: "d4c5f9"
+  description: Requires initial maintainer assessment
+- name: area/android
+  color: "3ddc84"
+  description: Kotlin, Compose, or Android platform work
+- name: area/native
+  color: "00599c"
+  description: C++ runtime and JNI work
+- name: area/runtime
+  color: "8b5cf6"
+  description: PRoot or Linux session lifecycle
+- name: area/graphics
+  color: "fb8c00"
+  description: Display or hardware acceleration
+- name: area/audio
+  color: "ec4899"
+  description: Playback or microphone integration
+- name: area/ci
+  color: "1d76db"
+  description: GitHub Actions and automation
+- name: area/localization
+  color: "0e8a16"
+  description: Translation or locale behavior
+- name: dependencies
+  color: "0366d6"
+  description: Dependency update
+- name: security
+  color: "b60205"
+  description: Security-sensitive change
+- name: release
+  color: "5319e7"
+  description: Versioning or release preparation
+- name: breaking-change
+  color: "b60205"
+  description: Incompatible public behavior
+- name: priority/critical
+  color: "b60205"
+  description: Immediate attention required
+- name: priority/high
+  color: "d93f0b"
+  description: High-priority work
+- name: status/stale
+  color: "ededed"
+  description: Inactive and awaiting current evidence or context
+- name: status/blocked
+  color: "b60205"
+  description: Cannot progress until a named prerequisite is resolved
+- name: pinned
+  color: "006b75"
+  description: Exempt from stale automation

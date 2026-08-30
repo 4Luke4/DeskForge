@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Ваше локальное рабочее пространство Linux</string>
+    <string name="navigation_workspaces">Рабочие пространства</string>
+    <string name="navigation_diagnostics">Диагностика</string>
+    <string name="navigation_settings">Настройки</string>
+    <string name="welcome_title">Создайте рабочий стол для планшета</string>
+    <string name="welcome_body">Запускайте локальное приватное пространство Fedora XFCE с поддержкой планшета, клавиатуры, мыши и звука.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Официальный образ AArch64 · Доставка через Play</string>
+    <string name="status_ready">Готово к установке</string>
+    <string name="status_installed">Установлено</string>
+    <string name="status_running">Запущено</string>
+    <string name="action_install">Установить пространство</string>
+    <string name="action_start">Запустить рабочий стол</string>
+    <string name="action_stop">Остановить сеанс</string>
+    <string name="action_import">Импортировать корневую файловую систему</string>
+    <string name="renderer_accelerated">Аппаратное ускорение</string>
+    <string name="renderer_software">Программный режим</string>
+    <string name="microphone_label">Микрофон гостевой системы</string>
+    <string name="microphone_summary">По умолчанию выключен. Android запросит разрешение перед записью звука.</string>
+    <string name="diagnostics_title">Диагностика среды выполнения</string>
+    <string name="diagnostics_empty">Запустите проверку готовности PRoot, графики, звука и устройств ввода.</string>
+    <string name="action_check">Запустить проверку</string>
+    <string name="runtime_unavailable">Проверенная среда PRoot не установлена в этой сборке.</string>
+    <string name="desktop_preview">Поверхность рабочего стола Linux</string>
+    <string name="release_gate">Прототип · Перед выпуском требуется проверка на физических планшетах</string>
+    <string name="status_available">Доступно</string>
+    <string name="status_unavailable">Недоступно</string>
+    <string name="diagnostics_version_code">Код версии %1$d</string>
+</resources>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Il tuo ambiente Linux locale</string>
+    <string name="navigation_workspaces">Ambienti</string>
+    <string name="navigation_diagnostics">Diagnostica</string>
+    <string name="navigation_settings">Impostazioni</string>
+    <string name="welcome_title">Crea un desktop pensato per il tuo tablet</string>
+    <string name="welcome_body">Esegui localmente un ambiente Fedora XFCE privato, integrato con tablet, tastiera, mouse e audio.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Immagine AArch64 ufficiale · Distribuita da Play</string>
+    <string name="status_ready">Pronto per l’installazione</string>
+    <string name="status_installed">Installato</string>
+    <string name="status_running">In esecuzione</string>
+    <string name="action_install">Installa ambiente</string>
+    <string name="action_start">Avvia desktop</string>
+    <string name="action_stop">Arresta sessione</string>
+    <string name="action_import">Importa file system radice</string>
+    <string name="renderer_accelerated">Rendering accelerato</string>
+    <string name="renderer_software">Rendering software di riserva</string>
+    <string name="microphone_label">Microfono dell’ambiente Linux</string>
+    <string name="microphone_summary">Disattivato per impostazione predefinita. Android chiede il consenso prima della registrazione audio.</string>
+    <string name="diagnostics_title">Diagnostica di runtime</string>
+    <string name="diagnostics_empty">Avvia un controllo per verificare PRoot, grafica, audio e dispositivi di input.</string>
+    <string name="action_check">Esegui controllo</string>
+    <string name="runtime_unavailable">Il runtime PRoot verificato non è installato in questa build.</string>
+    <string name="desktop_preview">Superficie desktop Linux</string>
+    <string name="release_gate">Build prototipo · Prima del rilascio è richiesta la verifica su tablet fisici</string>
+    <string name="status_available">Disponibile</string>
+    <string name="status_unavailable">Non disponibile</string>
+    <string name="diagnostics_version_code">Codice versione %1$d</string>
+</resources>

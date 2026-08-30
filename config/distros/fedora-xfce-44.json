@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "fedora-xfce-44",
+  "displayName": "Fedora XFCE 44",
+  "release": "44",
+  "architecture": "aarch64",
+  "sourcePage": "https://fedoraproject.org/spins/xfce/download/",
+  "checksumUrl": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Spins/aarch64/iso/Fedora-Spins-44-1.7-aarch64-CHECKSUM",
+  "imageUrl": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Spins/aarch64/iso/Fedora-Xfce-Live-44-1.7.aarch64.iso",
+  "fileName": "Fedora-Xfce-Live-44-1.7.aarch64.iso",
+  "sizeBytes": 2666934272,
+  "sha256": "c707af264df01b70fdf7abfd4fea44ee2942a6080d4353f4e61b23fe951c049e",
+  "launchCommand": "/usr/bin/startxfce4"
+}

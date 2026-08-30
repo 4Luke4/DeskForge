@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Tu espacio de trabajo Linux local</string>
+    <string name="navigation_workspaces">Espacios</string>
+    <string name="navigation_diagnostics">Diagnóstico</string>
+    <string name="navigation_settings">Ajustes</string>
+    <string name="welcome_title">Crea un escritorio diseñado para tu tablet</string>
+    <string name="welcome_body">Ejecuta localmente un espacio privado de Fedora XFCE con integración para tablet, teclado, ratón y audio.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Imagen AArch64 oficial · Distribuida por Play</string>
+    <string name="status_ready">Listo para instalar</string>
+    <string name="status_installed">Instalado</string>
+    <string name="status_running">En ejecución</string>
+    <string name="action_install">Instalar espacio</string>
+    <string name="action_start">Iniciar escritorio</string>
+    <string name="action_stop">Detener sesión</string>
+    <string name="action_import">Importar sistema de archivos raíz</string>
+    <string name="renderer_accelerated">Renderizador acelerado</string>
+    <string name="renderer_software">Alternativa por software</string>
+    <string name="microphone_label">Micrófono del sistema invitado</string>
+    <string name="microphone_summary">Desactivado de forma predeterminada. Android solicita permiso antes de capturar audio.</string>
+    <string name="diagnostics_title">Diagnóstico del entorno</string>
+    <string name="diagnostics_empty">Ejecuta una comprobación de PRoot, gráficos, audio y dispositivos de entrada.</string>
+    <string name="action_check">Ejecutar comprobación</string>
+    <string name="runtime_unavailable">El entorno PRoot verificado no está instalado en esta compilación.</string>
+    <string name="desktop_preview">Superficie del escritorio Linux</string>
+    <string name="release_gate">Compilación prototipo · Se requieren pruebas en tablets físicas antes del lanzamiento</string>
+    <string name="status_available">Disponible</string>
+    <string name="status_unavailable">No disponible</string>
+    <string name="diagnostics_version_code">Código de versión %1$d</string>
+</resources>

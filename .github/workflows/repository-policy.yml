@@ -1,0 +1,48 @@
+name: Repository policy
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+  schedule:
+    - cron: "41 17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    name: Label pull request
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Apply path labels
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  stale:
+    name: Triage inactivity
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Mark inactive discussions
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          stale-issue-message: This issue has been inactive for 60 days. Add current evidence or context to keep it open.
+          stale-pr-message: This pull request has been inactive for 30 days. Rebase it and confirm the remaining scope to keep it open.
+          close-issue-message: Closed after 14 additional days without activity. It can be reopened with current reproduction evidence.
+          close-pr-message: Closed after 14 additional days without activity. A refreshed pull request is welcome.
+          days-before-issue-stale: 60
+          days-before-pr-stale: 30
+          days-before-close: 14
+          stale-issue-label: status/stale
+          stale-pr-label: status/stale
+          exempt-issue-labels: security,status/blocked,pinned
+          exempt-pr-labels: security,status/blocked,pinned
