@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                     onCapabilityCheck = ::inspectCapabilities,
                     onStart = ::startSession,
                     onStop = ::stopSession,
-                    onMicrophoneChanged = ::setMicrophoneEnabled,
+                    onMicrophoneChanged = ::updateMicrophoneEnabled,
                 )
             }
         }
@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun setMicrophoneEnabled(enabled: Boolean) {
+    private fun updateMicrophoneEnabled(enabled: Boolean) {
         if (!enabled) {
             microphoneEnabled = false
             return
