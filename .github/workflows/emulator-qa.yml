@@ -16,6 +16,7 @@ jobs:
   tablet:
     name: API ${{ matrix.api-level }} tablet
     runs-on: macos-15
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +54,10 @@ jobs:
           arch: ${{ env.ANDROID_ABI }}
           target: google_apis
           profile: pixel_tablet
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # GitHub's ARM64 macOS hosts do not expose nested virtualization, so
+          # QEMU must use its documented software-acceleration fallback.
+          emulator-options: -no-window -accel off -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-boot-timeout: 1200
           disable-animations: true
           script: |
             mkdir -p build/qa
