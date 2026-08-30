@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Original forge mark: a machined desktop frame with a rising spark. -->
+    <path
+        android:fillColor="#FF9B52"
+        android:pathData="M28,30 L67,30 C77,30 84,38 84,48 L84,60 C84,70 77,78 67,78 L28,78 Z M38,40 L38,68 L65,68 C70,68 74,64 74,59 L74,49 C74,44 70,40 65,40 Z" />
+    <path
+        android:fillColor="#FFE0C5"
+        android:pathData="M73,19 L77,27 L86,29 L78,34 L79,43 L73,37 L65,43 L67,34 L59,29 L68,27 Z" />
+    <path
+        android:fillColor="#FF9B52"
+        android:pathData="M45,82 L67,82 L72,89 L40,89 Z" />
+</vector>

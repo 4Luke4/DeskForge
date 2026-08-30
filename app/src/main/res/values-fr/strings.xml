@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Votre espace Linux local</string>
+    <string name="navigation_workspaces">Espaces</string>
+    <string name="navigation_diagnostics">Diagnostics</string>
+    <string name="navigation_settings">Paramètres</string>
+    <string name="welcome_title">Façonnez un bureau conçu pour votre tablette</string>
+    <string name="welcome_body">Exécutez localement un espace Fedora XFCE privé, intégré à la tablette, au clavier, à la souris et à l’audio.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Image AArch64 officielle · Distribuée par Play</string>
+    <string name="status_ready">Prêt à installer</string>
+    <string name="status_installed">Installé</string>
+    <string name="status_running">En cours</string>
+    <string name="action_install">Installer l’espace</string>
+    <string name="action_start">Démarrer le bureau</string>
+    <string name="action_stop">Arrêter la session</string>
+    <string name="action_import">Importer un système de fichiers racine</string>
+    <string name="renderer_accelerated">Rendu accéléré</string>
+    <string name="renderer_software">Repli logiciel</string>
+    <string name="microphone_label">Microphone invité</string>
+    <string name="microphone_summary">Désactivé par défaut. Android demande l’autorisation avant toute capture audio.</string>
+    <string name="diagnostics_title">Diagnostics d’exécution</string>
+    <string name="diagnostics_empty">Lancez une vérification de PRoot, du graphisme, de l’audio et des périphériques d’entrée.</string>
+    <string name="action_check">Lancer la vérification</string>
+    <string name="runtime_unavailable">L’environnement PRoot vérifié n’est pas installé dans cette version.</string>
+    <string name="desktop_preview">Surface du bureau Linux</string>
+    <string name="release_gate">Version prototype · Une qualification sur tablettes physiques est requise avant publication</string>
+    <string name="status_available">Disponible</string>
+    <string name="status_unavailable">Indisponible</string>
+    <string name="diagnostics_version_code">Code de version %1$d</string>
+</resources>

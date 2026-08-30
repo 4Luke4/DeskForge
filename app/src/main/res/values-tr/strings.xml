@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Yerel Linux çalışma alanınız</string>
+    <string name="navigation_workspaces">Çalışma alanları</string>
+    <string name="navigation_diagnostics">Tanılama</string>
+    <string name="navigation_settings">Ayarlar</string>
+    <string name="welcome_title">Tabletiniz için tasarlanmış bir masaüstü oluşturun</string>
+    <string name="welcome_body">Tablet, klavye, fare ve ses entegrasyonuyla özel bir Fedora XFCE çalışma alanını yerel olarak çalıştırın.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Resmî AArch64 kalıbı · Play üzerinden sunulur</string>
+    <string name="status_ready">Kuruluma hazır</string>
+    <string name="status_installed">Kuruldu</string>
+    <string name="status_running">Çalışıyor</string>
+    <string name="action_install">Çalışma alanını kur</string>
+    <string name="action_start">Masaüstünü başlat</string>
+    <string name="action_stop">Oturumu durdur</string>
+    <string name="action_import">Kök dosya sistemi içe aktar</string>
+    <string name="renderer_accelerated">Hızlandırılmış işleyici</string>
+    <string name="renderer_software">Yazılım yedeği</string>
+    <string name="microphone_label">Konuk mikrofonu</string>
+    <string name="microphone_summary">Varsayılan olarak kapalıdır. Ses yakalanmadan önce Android izin ister.</string>
+    <string name="diagnostics_title">Çalışma zamanı tanılaması</string>
+    <string name="diagnostics_empty">PRoot, grafik, ses ve giriş aygıtlarının hazır olup olmadığını denetleyin.</string>
+    <string name="action_check">Yetenek denetimini çalıştır</string>
+    <string name="runtime_unavailable">Doğrulanmış PRoot çalışma zamanı bu derlemede kurulu değil.</string>
+    <string name="desktop_preview">Linux masaüstü yüzeyi</string>
+    <string name="release_gate">Prototip derleme · Yayımdan önce fiziksel tablet doğrulaması gerekir</string>
+    <string name="status_available">Kullanılabilir</string>
+    <string name="status_unavailable">Kullanılamıyor</string>
+    <string name="diagnostics_version_code">Sürüm kodu %1$d</string>
+</resources>

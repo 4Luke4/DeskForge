@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Ditt lokale Linux-arbeidsområde</string>
+    <string name="navigation_workspaces">Arbeidsområder</string>
+    <string name="navigation_diagnostics">Diagnostikk</string>
+    <string name="navigation_settings">Innstillinger</string>
+    <string name="welcome_title">Bygg et skrivebord laget for nettbrettet ditt</string>
+    <string name="welcome_body">Kjør et privat Fedora XFCE-arbeidsområde lokalt, med integrasjon for nettbrett, tastatur, mus og lyd.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Offisielt AArch64-bilde · Levert via Play</string>
+    <string name="status_ready">Klar til installasjon</string>
+    <string name="status_installed">Installert</string>
+    <string name="status_running">Kjører</string>
+    <string name="action_install">Installer arbeidsområde</string>
+    <string name="action_start">Start skrivebord</string>
+    <string name="action_stop">Stopp økt</string>
+    <string name="action_import">Importer rotfilsystem</string>
+    <string name="renderer_accelerated">Akselerert gjengivelse</string>
+    <string name="renderer_software">Programvarebasert reserve</string>
+    <string name="microphone_label">Gjestemikrofon</string>
+    <string name="microphone_summary">Av som standard. Android spør før en Linux-økt kan ta opp lyd.</string>
+    <string name="diagnostics_title">Kjøretidsdiagnostikk</string>
+    <string name="diagnostics_empty">Kjør en kontroll av PRoot, grafikk, lyd og inndata.</string>
+    <string name="action_check">Kjør kapabilitetskontroll</string>
+    <string name="runtime_unavailable">Den verifiserte PRoot-kjøretiden er ikke installert i denne byggversjonen.</string>
+    <string name="desktop_preview">Linux-skrivebordsflate</string>
+    <string name="release_gate">Prototyp · Fysisk nettbrettkvalifisering kreves før utgivelse</string>
+    <string name="status_available">Tilgjengelig</string>
+    <string name="status_unavailable">Utilgjengelig</string>
+    <string name="diagnostics_version_code">Versjonskode %1$d</string>
+</resources>

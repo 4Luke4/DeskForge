@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brand_tagline">Seu ambiente Linux local</string>
+    <string name="navigation_workspaces">Ambientes</string>
+    <string name="navigation_diagnostics">Diagnóstico</string>
+    <string name="navigation_settings">Configurações</string>
+    <string name="welcome_title">Crie um desktop feito para o seu tablet</string>
+    <string name="welcome_body">Execute localmente um ambiente Fedora XFCE privado, integrado a tablet, teclado, mouse e áudio.</string>
+    <string name="fedora_title">Fedora XFCE 44</string>
+    <string name="fedora_subtitle">Imagem AArch64 oficial · Entregue pelo Play</string>
+    <string name="status_ready">Pronto para instalar</string>
+    <string name="status_installed">Instalado</string>
+    <string name="status_running">Em execução</string>
+    <string name="action_install">Instalar ambiente</string>
+    <string name="action_start">Iniciar desktop</string>
+    <string name="action_stop">Encerrar sessão</string>
+    <string name="action_import">Importar sistema de arquivos raiz</string>
+    <string name="renderer_accelerated">Renderização acelerada</string>
+    <string name="renderer_software">Alternativa por software</string>
+    <string name="microphone_label">Microfone do convidado</string>
+    <string name="microphone_summary">Desativado por padrão. O Android pede permissão antes da captura de áudio.</string>
+    <string name="diagnostics_title">Diagnóstico de execução</string>
+    <string name="diagnostics_empty">Execute uma verificação de PRoot, gráficos, áudio e dispositivos de entrada.</string>
+    <string name="action_check">Executar verificação</string>
+    <string name="runtime_unavailable">O ambiente PRoot verificado não está instalado nesta compilação.</string>
+    <string name="desktop_preview">Superfície do desktop Linux</string>
+    <string name="release_gate">Compilação de protótipo · A validação em tablets físicos é obrigatória antes do lançamento</string>
+    <string name="status_available">Disponível</string>
+    <string name="status_unavailable">Indisponível</string>
+    <string name="diagnostics_version_code">Código da versão %1$d</string>
+</resources>

@@ -1,9 +1,17 @@
+# Local planning notes
+plan.md
+
 # Gradle files
 .gradle/
 build/
 
 # Local configuration file (sdk path, etc)
 local.properties
+signing.properties
+
+# Generated and independently verified Play Asset Delivery payloads
+fedora_xfce_44/src/main/assets/rootfs.tar.gz
+fedora_xfce_44/src/main/assets/rootfs.tar.gz.sha256
 
 # Log/OS Files
 *.log
@@ -32,3 +40,94 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+####################################################################
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Linker files
+*.ilk
+
+# Debugger Files
+*.pdb
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+*.so.*
+!app/src/main/jniLibs/arm64-v8a/libproot.so
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Build directories
+build/
+Build/
+build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+compile_commands.json
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*.swp
+
+# vcpkg
+vcpkg_installed/
+
+# debug information files
+*.dwo
+
+# test output & cache
+Testing/
+.cache/
+
+####################################################################
+
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# Metadata left by Dolphin file manager, which comes with KDE Plasma
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+# Log files created by default by the nohup command
+nohup.out

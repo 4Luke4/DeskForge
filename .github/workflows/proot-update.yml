@@ -1,0 +1,64 @@
+name: PRoot upstream monitor
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Check verified PRoot source
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve and verify latest stable source
+        id: upstream
+        run: |
+          current_tag=$(jq -r '.tag' config/proot/version.json)
+          latest_tag=$(curl --fail --silent --show-error --location \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            https://api.github.com/repos/proot-me/proot/releases/latest | jq -r '.tag_name')
+          test -n "$latest_tag"
+          if [[ "$latest_tag" = "$current_tag" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version=${latest_tag#v}
+          source_url="https://github.com/proot-me/proot/archive/refs/tags/${latest_tag}.tar.gz"
+          curl --fail --silent --show-error --location "$source_url" --output "$RUNNER_TEMP/proot.tar.gz"
+          sha256=$(sha256sum "$RUNNER_TEMP/proot.tar.gz" | cut -d ' ' -f 1)
+          jq \
+            --arg version "$version" \
+            --arg tag "$latest_tag" \
+            --arg source_url "$source_url" \
+            --arg sha256 "$sha256" \
+            '.version = $version | .tag = $tag | .sourceUrl = $source_url | .sha256 = $sha256' \
+            config/proot/version.json > "$RUNNER_TEMP/version.json"
+          mv "$RUNNER_TEMP/version.json" config/proot/version.json
+          scripts/verify-proot-source.sh
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Open reviewable update pull request
+        if: steps.upstream.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "build(deps): update PRoot to ${{ steps.upstream.outputs.version }}"
+          title: "build(deps): update PRoot to ${{ steps.upstream.outputs.version }}"
+          body: |
+            Updates the pinned PRoot source manifest to the latest stable upstream release.
+
+            The workflow downloaded the official tag archive, recorded its SHA-256 digest,
+            and verified the expected GPL license file. Native compatibility still requires review.
+          branch: automation/proot-${{ steps.upstream.outputs.version }}
+          delete-branch: true
+          labels: dependencies,area/runtime

@@ -1,21 +1,31 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+DeskForge has not reached a production release. Security fixes are currently provided only for the
+latest `0.1.x` development line.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+| --- | --- |
+| 0.1.x | Yes |
+| Earlier or unreleased snapshots | No |
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Do not disclose suspected vulnerabilities in a public issue, discussion, or pull request. Submit a
+private report through [GitHub Security Advisories](https://github.com/4Luke4/DeskForge/security/advisories/new).
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Include the affected version, Android version and device class, reproducible steps, impact, and any
+proof of concept that is safe to share. Do not include personal data or access systems you do not
+own or have explicit permission to test.
+
+The maintainer will acknowledge a complete report within five business days and provide status
+updates at least every ten business days while remediation is active. Disclosure timing is agreed
+with the reporter after a fix and update path are available.
+
+## Security boundaries
+
+PRoot fake-root is a compatibility mechanism, not an Android security boundary. Guest processes
+run with the DeskForge application UID and can reach only application-private files and documents
+the user deliberately shares. A vulnerability that crosses those boundaries, bypasses explicit
+microphone consent, executes an unverified payload, or escapes archive validation is in scope.

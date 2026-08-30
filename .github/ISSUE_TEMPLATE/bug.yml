@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible DeskForge defect.
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for helping improve DeskForge. Do not include secrets or private documents.
+  - type: input
+    id: version
+    attributes:
+      label: DeskForge version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Manufacturer/model, Android 14 (API 34)
+    validations:
+      required: true
+  - type: dropdown
+    id: renderer
+    attributes:
+      label: Renderer reported by diagnostics
+      options: [Accelerated, Software fallback, Session did not start, Unknown]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: Provide the smallest numbered sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and diagnostics
+      description: Attach redacted diagnostics, screenshots, or crash logs when available.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: I removed personal data and secrets from all attachments.
+          required: true

@@ -1,0 +1,23 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.jar binary
+*.jks binary
+*.keystore binary
+*.png binary
+*.webp binary
+*.zip binary
+*.gz binary
+*.xz binary
+*.zst binary
+*.tar binary
+*.iso binary
+
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+fedora_xfce_44/src/main/assets/rootfs.tar.gz linguist-generated=true
+docs/legal/** linguist-documentation=true
