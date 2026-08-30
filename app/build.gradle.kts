@@ -117,6 +117,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // ActivityResult permission handling requires a non-vulnerable Fragment runtime on the graph.
+    implementation(libs.androidx.fragment)
     implementation(libs.play.asset.delivery)
 
     val composeBom = platform(libs.androidx.compose.bom)
