@@ -1,8 +1,8 @@
 name: ARM64 emulator QA
 
 on:
-  pull_request:
-    branches: [main]
+  # Emulator QA is intentionally operator-triggered because each ARM64 system
+  # image is expensive to provision and software emulation is time-intensive.
   workflow_dispatch:
 
 permissions:
