@@ -100,7 +100,8 @@ android {
     }
 
     packaging {
-        jniLibs.useLegacyPackaging = false
+        // The separately executed PRoot binary must be extracted into the executable native-lib directory.
+        jniLibs.useLegacyPackaging = true
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
     }
 

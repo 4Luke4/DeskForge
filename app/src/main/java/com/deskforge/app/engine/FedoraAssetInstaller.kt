@@ -5,7 +5,7 @@ import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.android.play.core.assetpacks.AssetPackState
 import com.google.android.play.core.assetpacks.AssetPackStateUpdateListener
-import com.google.android.play.core.assetpacks.AssetPackStatus
+import com.google.android.play.core.assetpacks.model.AssetPackStatus
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -23,7 +23,12 @@ class FedoraAssetInstaller(
 
     fun install(onEvent: (InstallEvent) -> Unit) {
         manager.getPackLocation(PACK_NAME)?.let { location ->
-            unpack(location.assetsPath(), onEvent)
+            val assetsPath = location.assetsPath()
+            if (assetsPath == null) {
+                onEvent(InstallEvent.Failed("The Fedora asset pack does not expose file storage"))
+            } else {
+                unpack(assetsPath, onEvent)
+            }
             return
         }
 
@@ -57,8 +62,12 @@ class FedoraAssetInstaller(
             AssetPackStatus.COMPLETED -> {
                 unregisterListener()
                 val location = manager.getPackLocation(PACK_NAME)
-                if (location == null) onEvent(InstallEvent.Failed("Completed asset pack has no location"))
-                else unpack(location.assetsPath(), onEvent)
+                val assetsPath = location?.assetsPath()
+                if (assetsPath == null) {
+                    onEvent(InstallEvent.Failed("Completed asset pack has no file-storage location"))
+                } else {
+                    unpack(assetsPath, onEvent)
+                }
             }
             AssetPackStatus.CANCELED -> {
                 unregisterListener()
