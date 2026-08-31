@@ -18,4 +18,3 @@ These instructions extend the repository root instructions for the Android appli
   user-visible strings, dimensions that encode product policy, or toolchain values in Kotlin.
 - Add JVM tests for pure Kotlin logic and instrumentation tests for Android, Compose, permission, or
   filesystem behavior. Execute them only through the applicable GitHub Actions workflow.
-
