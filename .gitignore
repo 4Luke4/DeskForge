@@ -1,6 +1,8 @@
 # Local planning notes
 plan.md
 
+# https://github.com/github/gitignore/blob/main/Android.gitignore #
+
 # Gradle files
 .gradle/
 build/
@@ -41,7 +43,7 @@ google-services.json
 # Android Profiling
 *.hprof
 
-####################################################################
+# https://github.com/github/gitignore/blob/main/C%2B%2B.gitignore #
 
 # Prerequisites
 *.d
@@ -113,7 +115,7 @@ vcpkg_installed/
 Testing/
 .cache/
 
-####################################################################
+# https://github.com/github/gitignore/blob/main/Global/Linux.gitignore #
 
 *~
 
