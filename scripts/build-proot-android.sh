@@ -161,6 +161,7 @@ EOF
       --cross-compile \
       --cross-answers=cross-answers.txt; then
     # Preserve Waf's detailed probe evidence when a future source update needs new answers.
+    sed -n '/UNKNOWN/p' cross-answers.txt
     find bin -type f -name config.log -exec tail -n 200 {} \;
     exit 1
   fi
