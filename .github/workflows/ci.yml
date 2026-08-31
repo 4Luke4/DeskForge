@@ -82,7 +82,11 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Verify secured build dependency graph
-        run: ./gradlew --no-daemon --stacktrace verifySecureBuildDependencies
+        # The audit resolves every project configuration from its owning task and is intentionally
+        # isolated from the build's configuration-cache and parallel-execution defaults.
+        run: >-
+          ./gradlew --no-daemon --no-configuration-cache --no-parallel --stacktrace
+          verifySecureBuildDependencies
 
       - name: Capture build dependency environments
         run: |
