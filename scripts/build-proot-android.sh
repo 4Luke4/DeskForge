@@ -200,8 +200,7 @@ proot_ldflags=(
 )
 
 env SOURCE_DATE_EPOCH=1683936000 make \
-  --directory "${work_directory}/build/proot" \
-  --file "${proot_source}/src/GNUmakefile" \
+  --directory "${proot_source}/src" \
   --jobs=2 \
   V=1 \
   VERSION="v${proot_version}" \
@@ -215,8 +214,8 @@ env SOURCE_DATE_EPOCH=1683936000 make \
   LDFLAGS="${proot_ldflags[*]}" \
   proot
 
-cp -- "${work_directory}/build/proot/proot" "${output_binary}"
-cp -- "${work_directory}/build/proot/loader/loader" "${output_loader}"
+cp -- "${proot_source}/src/proot" "${output_binary}"
+cp -- "${proot_source}/src/loader/loader" "${output_loader}"
 "${strip}" --strip-unneeded "${output_binary}"
 "${strip}" --strip-unneeded "${output_loader}"
 chmod 0755 "${output_binary}"
