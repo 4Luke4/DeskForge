@@ -21,13 +21,13 @@
     "minimumApi": 34,
     "runtime": {
       "fileName": "libproot.so",
-      "sizeBytes": 0,
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sizeBytes": 186160,
+      "sha256": "6aebbce1c6fe4f47284d1339fe8af50252316174e5d4c5610f99626486183cb7"
     },
     "loader": {
       "fileName": "libproot-loader.so",
-      "sizeBytes": 0,
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      "sizeBytes": 17944,
+      "sha256": "e6cf9fe83f5aa356213d48951d97efa584e6c95ae7fb3de77466bea6136d6a55"
     }
   }
 }
