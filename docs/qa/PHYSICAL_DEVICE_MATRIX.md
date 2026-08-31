@@ -1,8 +1,10 @@
 # Physical ARM64 Tablet Qualification
 
-GitHub-hosted ARM64 emulator QA is a merge requirement. It does not substitute for production
-qualification on physical tablets. Record model identifiers and evidence links; do not store device
-serial numbers or user data in the repository.
+GitHub-hosted ARM64 emulator QA is a release-readiness requirement. Because provisioning is
+resource-intensive, maintainers dispatch it manually and its jobs are restricted to the protected
+`main` branch. Pull requests rely on the standard CI and security checks instead. Emulator QA does
+not substitute for production qualification on physical tablets. Record model identifiers and
+evidence links; do not store device serial numbers or user data in the repository.
 
 | Area | Required scenarios | Acceptance evidence |
 | --- | --- | --- |

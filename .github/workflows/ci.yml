@@ -40,7 +40,11 @@ jobs:
           jq -e '.release and .imageUrl and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)' config/distros/fedora-xfce-44.json
 
       - name: Validate pull request commits
-        if: github.event_name == 'pull_request'
+        # Authenticated PR authorship cannot be spoofed through commit metadata.
+        if: >-
+          github.event_name == 'pull_request' &&
+          (github.event.pull_request.user.login != 'dependabot[bot]' ||
+          github.event.pull_request.user.type != 'Bot')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -54,13 +58,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Export pinned Android toolchain
-        run: scripts/export-android-toolchain.sh
+        id: toolchain
+        uses: ./.github/actions/export-android-toolchain
 
       - name: Configure Java
         uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: ${{ steps.toolchain.outputs.java_version }}
 
       - name: Configure Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
@@ -76,6 +81,21 @@ jobs:
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
+      - name: Verify secured build dependency graph
+        # The audit resolves every project configuration from its owning task and is intentionally
+        # isolated from the build's configuration-cache and parallel-execution defaults.
+        run: >-
+          ./gradlew --no-daemon --no-configuration-cache --no-parallel --stacktrace
+          verifySecureBuildDependencies
+
+      - name: Capture build dependency environments
+        run: |
+          ./gradlew --no-daemon --stacktrace \
+            buildEnvironment \
+            :app:buildEnvironment \
+            :fedora_xfce_44:buildEnvironment \
+            > build-environment.txt
+
       - name: Run static analysis, tests, and builds
         run: ./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest assembleDebug bundleRelease
 
@@ -85,6 +105,7 @@ jobs:
         with:
           name: android-reports
           path: |
+            build-environment.txt
             app/build/reports/
             app/build/outputs/lint-results-debug.html
           if-no-files-found: warn

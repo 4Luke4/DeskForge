@@ -3,18 +3,21 @@ name: ARM64 emulator QA
 on:
   # Emulator QA is intentionally operator-triggered because each ARM64 system
   # image is expensive to provision and software emulation is time-intensive.
+  # The job-level ref guard prevents these resources from being used by an
+  # unreviewed branch selected in GitHub's workflow-dispatch interface.
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: emulator-${{ github.ref }}
+  group: emulator-main
   cancel-in-progress: true
 
 jobs:
   tablet:
     name: API ${{ matrix.api-level }} tablet
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-15
     timeout-minutes: 60
     strategy:
@@ -30,13 +33,14 @@ jobs:
         run: test "$(uname -m)" = "arm64"
 
       - name: Export pinned Android toolchain
-        run: scripts/export-android-toolchain.sh
+        id: toolchain
+        uses: ./.github/actions/export-android-toolchain
 
       - name: Configure Java
         uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: ${{ steps.toolchain.outputs.java_version }}
 
       - name: Configure Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
@@ -51,7 +55,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ matrix.api-level }}
-          arch: ${{ env.ANDROID_ABI }}
+          arch: ${{ steps.toolchain.outputs.android_abi }}
           target: google_apis
           profile: pixel_tablet
           # GitHub's ARM64 macOS hosts do not expose nested virtualization, so

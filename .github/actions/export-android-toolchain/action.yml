@@ -1,0 +1,30 @@
+name: Export Android toolchain
+description: Exports the repository-pinned Android toolchain as environment variables and outputs.
+
+outputs:
+  java_version:
+    description: Java feature version required by the Android build.
+    value: ${{ steps.export.outputs.java_version }}
+  android_platform:
+    description: Android SDK platform package identifier.
+    value: ${{ steps.export.outputs.android_platform }}
+  android_build_tools:
+    description: Android SDK build-tools version.
+    value: ${{ steps.export.outputs.android_build_tools }}
+  android_ndk:
+    description: Android NDK version.
+    value: ${{ steps.export.outputs.android_ndk }}
+  android_cmake:
+    description: CMake version used for native builds.
+    value: ${{ steps.export.outputs.android_cmake }}
+  android_abi:
+    description: Android ABI supported by DeskForge.
+    value: ${{ steps.export.outputs.android_abi }}
+
+runs:
+  using: composite
+  steps:
+    - name: Export pinned values
+      id: export
+      shell: bash
+      run: "${GITHUB_ACTION_PATH}/../../../scripts/export-android-toolchain.sh"
