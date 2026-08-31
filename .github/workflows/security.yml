@@ -67,6 +67,17 @@ jobs:
           languages: ${{ matrix.language }}
 
       - name: Compile analyzed sources
+        # CodeQL 2.26.4 supports Kotlin below 2.4.20. This isolated, cache-free analysis build keeps
+        # KAPT forbidden while normal CI and dependency submission verify the patched KGP graph.
+        if: matrix.language == 'java-kotlin'
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/codeql-gradle-home
+        run: >-
+          ./gradlew --no-daemon --no-build-cache --no-configuration-cache --stacktrace
+          -Pdeskforge.codeqlKotlinCompatibility=true assembleDebug
+
+      - name: Compile analyzed sources
+        if: matrix.language == 'cpp'
         run: ./gradlew --no-daemon --stacktrace assembleDebug
 
       - name: Analyze
