@@ -86,11 +86,12 @@ internal class FedoraWorkspaceStore(private val distroDirectory: File) {
         rootfs.isDirectory && File(rootfs, "usr/bin/startxfce4").isFile &&
             File(rootfs, ".deskforge-source-sha256").isFile
 
-    private fun trustedControlDirectories(): Boolean =
-        distroDirectory.parentFile != null &&
-            !Files.isSymbolicLink(distroDirectory.parentFile.toPath()) &&
+    private fun trustedControlDirectories(): Boolean {
+        val parent = distroDirectory.parentFile ?: return false
+        return !Files.isSymbolicLink(parent.toPath()) &&
             !Files.isSymbolicLink(distroDirectory.toPath()) &&
             !Files.isSymbolicLink(installationsDirectory.toPath())
+    }
 
     private fun deleteWithoutFollowingLinks(entry: File) {
         if (!Files.exists(entry.toPath(), LinkOption.NOFOLLOW_LINKS)) return
