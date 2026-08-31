@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "fedora-xfce-44",
   "displayName": "Fedora XFCE 44",
   "release": "44",
@@ -10,5 +10,47 @@
   "fileName": "Fedora-Xfce-Live-44-1.7.aarch64.iso",
   "sizeBytes": 2666934272,
   "sha256": "c707af264df01b70fdf7abfd4fea44ee2942a6080d4353f4e61b23fe951c049e",
-  "launchCommand": "/usr/bin/startxfce4"
+  "launchCommand": "/usr/bin/startxfce4",
+  "desktopHost": {
+    "name": "TigerVNC Xvnc",
+    "version": "1.16.2-4.fc44",
+    "executable": "/usr/bin/Xvnc",
+    "bootstrap": "/usr/libexec/deskforge/desktop-session",
+    "packages": [
+      {
+        "name": "tigervnc-x11-server",
+        "url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/44/Everything/aarch64/Packages/t/tigervnc-x11-server-1.16.2-4.fc44.aarch64.rpm",
+        "sizeBytes": 1426256,
+        "sha256": "19f56cf579fddf94a13d03760886a9463f5d40f7cd359a17fe35fa634b7d333f"
+      },
+      {
+        "name": "tigervnc-server-common",
+        "url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/44/Everything/aarch64/Packages/t/tigervnc-server-common-1.16.2-4.fc44.aarch64.rpm",
+        "sizeBytes": 60837,
+        "sha256": "d40219509ace8ad0234ed90c27ec5e1ebe7623f81442ddc13f21ca12da8f1ce8"
+      },
+      {
+        "name": "tigervnc-license",
+        "url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/44/Everything/aarch64/Packages/t/tigervnc-license-1.16.2-4.fc44.noarch.rpm",
+        "sizeBytes": 17341,
+        "sha256": "0ebae98bb6c26c44755a3012b97283e064659a741e4e44ff386fb432862598b0"
+      }
+    ],
+    "source": {
+      "url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/44/Everything/source/tree/Packages/t/tigervnc-1.16.2-4.fc44.src.rpm",
+      "sizeBytes": 2319507,
+      "sha256": "cbb92d32014b3f2f93805c684416099646ca87cdd622002e28f554ef77e36e0e"
+    }
+  },
+  "assetDelivery": {
+    "packNames": [
+      "fedora_xfce_44",
+      "fedora_xfce_44_1",
+      "fedora_xfce_44_2",
+      "fedora_xfce_44_3"
+    ],
+    "partSizeBytes": 1400000000,
+    "maximumParts": 4,
+    "maximumArchiveSizeBytes": 4000000000
+  }
 }

@@ -18,17 +18,28 @@ jobs:
       - name: Install image extraction tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes guestfish squashfs-tools xorriso
+          sudo apt-get install --yes binutils cpio guestfish rpm2cpio rpm squashfs-tools xorriso
 
       - name: Prepare verified root filesystem
         run: scripts/prepare-fedora-asset.sh
+
+      - name: Stage corresponding source
+        run: |
+          mkdir -p build/fedora-corresponding-source
+          cp --archive \
+            "${RUNNER_TEMP}/deskforge-fedora-asset/corresponding-source/." \
+            build/fedora-corresponding-source/
 
       - name: Retain verified asset payload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fedora-xfce-44-asset
           path: |
-            fedora_xfce_44/src/main/assets/rootfs.tar.gz
-            fedora_xfce_44/src/main/assets/rootfs.tar.gz.sha256
+            fedora_xfce_44/src/main/assets/payload-manifest.json
+            fedora_xfce_44/src/main/assets/rootfs.part*
+            fedora_xfce_44_1/src/main/assets/rootfs.part*
+            fedora_xfce_44_2/src/main/assets/rootfs.part*
+            fedora_xfce_44_3/src/main/assets/rootfs.part*
+            build/fedora-corresponding-source/
           if-no-files-found: error
           retention-days: 7
