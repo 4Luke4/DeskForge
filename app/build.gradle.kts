@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.util.Properties
 
 plugins {
@@ -13,6 +14,22 @@ require(versionParts[1] <= 999 && versionParts[2] <= 999) {
 }
 val generatedVersionCode = versionParts[0] * 1_000_000 + versionParts[1] * 1_000 + versionParts[2]
 require(generatedVersionCode in 1..2_100_000_000) { "VERSION exceeds Google Play's version-code range" }
+
+val prootManifest = JsonSlurper().parse(rootProject.file("config/proot/version.json")) as Map<*, *>
+require(prootManifest["schemaVersion"] == 2) { "Unsupported PRoot manifest schema" }
+val prootMetadata = prootManifest["proot"] as Map<*, *>
+val prootBinary = prootManifest["binary"] as Map<*, *>
+val prootVersion = prootMetadata["version"] as String
+val prootRuntime = prootBinary["runtime"] as Map<*, *>
+val prootLoader = prootBinary["loader"] as Map<*, *>
+val prootSha256 = prootRuntime["sha256"] as String
+val prootSizeBytes = (prootRuntime["sizeBytes"] as Number).toLong()
+val prootLoaderSha256 = prootLoader["sha256"] as String
+val prootLoaderSizeBytes = (prootLoader["sizeBytes"] as Number).toLong()
+require(Regex("^[a-f0-9]{64}$").matches(prootSha256)) { "Invalid PRoot binary SHA-256" }
+require(Regex("^[a-f0-9]{64}$").matches(prootLoaderSha256)) { "Invalid PRoot loader SHA-256" }
+require(prootRuntime["fileName"] == "libproot.so") { "Unexpected PRoot runtime file name" }
+require(prootLoader["fileName"] == "libproot-loader.so") { "Unexpected PRoot loader file name" }
 
 val androidToolchain = Properties().apply {
     rootProject.file("config/android/toolchain.properties").inputStream().use(::load)
@@ -43,6 +60,18 @@ android {
         versionName = semanticVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["minimumTabletWidthDp"] = toolchainString("minimumTabletWidthDp")
+        buildConfigField("String", "PROOT_VERSION", "\"$prootVersion\"")
+        buildConfigField("String", "PROOT_SHA256", "\"$prootSha256\"")
+        buildConfigField("long", "PROOT_SIZE_BYTES", "${prootSizeBytes}L")
+        buildConfigField("String", "PROOT_LOADER_SHA256", "\"$prootLoaderSha256\"")
+        buildConfigField("long", "PROOT_LOADER_SIZE_BYTES", "${prootLoaderSizeBytes}L")
+
+        require(prootBinary["abi"] == toolchainString("abi")) {
+            "PRoot binary ABI does not match the Android toolchain"
+        }
+        require((prootBinary["minimumApi"] as Number).toInt() == toolchainInt("minSdk")) {
+            "PRoot binary API does not match minSdk"
+        }
 
         ndk {
             // DeskForge deliberately supports 64-bit ARM tablets only.

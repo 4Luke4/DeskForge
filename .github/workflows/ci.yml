@@ -36,7 +36,19 @@ jobs:
 
       - name: Validate pinned component manifests
         run: |
-          jq -e '.version and .sourceUrl and (.sha256 | test("^[a-f0-9]{64}$"))' config/proot/version.json
+          jq -e '
+            .schemaVersion == 2 and
+            .proot.version and .proot.sourceUrl and (.proot.sha256 | test("^[a-f0-9]{64}$")) and
+            .buildDependencies.talloc.version and .buildDependencies.talloc.sourceUrl and
+            (.buildDependencies.talloc.sha256 | test("^[a-f0-9]{64}$")) and
+            .binary.abi == "arm64-v8a" and .binary.minimumApi == 34 and
+            .binary.runtime.fileName == "libproot.so" and
+            (.binary.runtime.sha256 | test("^[a-f0-9]{64}$")) and
+            (.binary.runtime.sizeBytes >= 0) and
+            .binary.loader.fileName == "libproot-loader.so" and
+            (.binary.loader.sha256 | test("^[a-f0-9]{64}$")) and
+            (.binary.loader.sizeBytes >= 0)
+          ' config/proot/version.json
           jq -e '.release and .imageUrl and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)' config/distros/fedora-xfce-44.json
 
       - name: Validate pull request commits
@@ -99,6 +111,12 @@ jobs:
       - name: Run static analysis, tests, and builds
         run: ./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest assembleDebug bundleRelease
 
+      - name: Verify packaged PRoot executable
+        run: >-
+          scripts/verify-packaged-proot.sh
+          app/build/outputs/apk/debug/*.apk
+          app/build/outputs/bundle/release/*.aab
+
       - name: Retain reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -120,3 +138,70 @@ jobs:
             app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
+
+  proot-runtime:
+    name: Reproducible PRoot runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Export pinned Android toolchain
+        id: toolchain
+        uses: ./.github/actions/export-android-toolchain
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install pinned Android NDK
+        run: sdkmanager "ndk;${ANDROID_NDK}"
+
+      - name: Build independent PRoot copies
+        run: |
+          scripts/build-proot-android.sh \
+            build/proot/first/libproot.so build/proot/first/libproot-loader.so build/proot/first/work
+          scripts/build-proot-android.sh \
+            build/proot/second/libproot.so build/proot/second/libproot-loader.so build/proot/second/work
+          cmp build/proot/first/libproot.so build/proot/second/libproot.so
+          cmp build/proot/first/libproot-loader.so build/proot/second/libproot-loader.so
+
+      - name: Validate candidate and corresponding source
+        run: |
+          scripts/verify-proot-binary.sh \
+            build/proot/first/libproot.so build/proot/first/libproot-loader.so --allow-unpinned
+          scripts/package-proot-source.sh build/proot/deskforge-proot-corresponding-source.tar.gz
+
+      - name: Compare committed runtime
+        id: committed
+        continue-on-error: true
+        run: |
+          scripts/verify-proot-binary.sh \
+            app/src/main/jniLibs/arm64-v8a/libproot.so \
+            app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+          cmp app/src/main/jniLibs/arm64-v8a/libproot.so build/proot/first/libproot.so
+          cmp \
+            app/src/main/jniLibs/arm64-v8a/libproot-loader.so \
+            build/proot/first/libproot-loader.so
+
+      - name: Retain runtime evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-proot-runtime
+          path: |
+            build/proot/first/libproot.so
+            build/proot/first/libproot.so.sha256
+            build/proot/first/libproot.so.size
+            build/proot/first/libproot-loader.so
+            build/proot/first/libproot-loader.so.sha256
+            build/proot/first/libproot-loader.so.size
+            build/proot/deskforge-proot-corresponding-source.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce committed runtime match
+        if: steps.committed.outcome != 'success'
+        run: |
+          echo "The committed PRoot binary and manifest do not match the reproducible build" >&2
+          exit 1

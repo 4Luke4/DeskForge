@@ -5,9 +5,9 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.1.0 is the foundation for a Fedora XFCE vertical slice. It is not approved for production
-> distribution. Physical tablet, translation, Google Play policy, and third-party licensing gates
-> remain mandatory before release.
+> Version 0.2.0 adds the verified PRoot runtime for the Fedora XFCE vertical slice. It is not
+> approved for production distribution. Physical tablet, translation, Google Play policy, and
+> third-party licensing gates remain mandatory before release.
 
 ## Product contract
 
@@ -27,8 +27,9 @@ licenses and identities.
 
 The Compose application owns onboarding, workspace management, permissions, lifecycle state, and
 diagnostics. `DeskForgeEngine` is the stable Kotlin boundary to the C++ supervisor. The native
-engine probes host capabilities and provides a fail-closed launch contract for a separately
-packaged PRoot process; GPL PRoot code is never linked into a proprietary DeskForge library.
+engine probes host capabilities and provides a fail-closed launch contract for the separately
+packaged, exact-digest PRoot process; GPL PRoot code is never linked into a proprietary DeskForge
+library.
 
 Fedora is sourced only from the official signed release image. CI validates Fedora's OpenPGP
 checksum, creates a root filesystem payload, enforces Play asset-pack size limits, and builds the
@@ -40,8 +41,9 @@ See [Architecture](docs/architecture/README.md), [Security model](docs/architect
 
 ## Verification
 
-Repository policy requires verification through GitHub Actions. The workflows perform Android and
-native builds, static analysis, unit tests, ARM64 emulator QA on API 34 and the latest available
+Repository policy requires verification through GitHub Actions. The workflows perform reproducible
+PRoot builds, ELF and package-integrity checks, Android and native builds, static analysis, unit tests,
+ARM64 emulator QA on API 34 and the latest available
 stable image (currently API 36), dependency review,
 CodeQL analysis, artifact checks, and supply-chain validation. Generated screenshots, UI trees,
 and logcat records are retained with emulator jobs. Because emulator provisioning is
@@ -53,10 +55,11 @@ secrets only after Play and legal release gates have been approved.
 
 ## Status
 
-DeskForge is under active initial development. A release remains deliberately blocked until the
-audited PRoot executable, Android display/audio hosts, final Play asset partitioning, and physical
-device qualification are complete. The current desktop surface is an integration boundary, not a
-claim that an XFCE frame is rendered in this version.
+DeskForge is under active initial development. The PRoot executable is now a reproducible,
+checksum-pinned runtime component with retained corresponding source. A release remains deliberately
+blocked until post-merge runtime evidence, Android display/audio hosts, final Play asset partitioning,
+and physical-device qualification are complete. The current desktop surface is an integration
+boundary, not a claim that an XFCE frame is rendered in this version.
 
 ## License
 

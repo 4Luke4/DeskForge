@@ -1,8 +1,33 @@
 {
-  "schemaVersion": 1,
-  "version": "5.4.0",
-  "tag": "v5.4.0",
-  "sourceUrl": "https://github.com/proot-me/proot/archive/refs/tags/v5.4.0.tar.gz",
-  "sha256": "29248aac2a7ce10c3bd5ee5602742ec33b2532310ff9cf73b79f3c133e5a5f68",
-  "license": "GPL-2.0-or-later"
+  "schemaVersion": 2,
+  "proot": {
+    "version": "5.4.0",
+    "tag": "v5.4.0",
+    "sourceUrl": "https://github.com/proot-me/proot/archive/refs/tags/v5.4.0.tar.gz",
+    "sha256": "29248aac2a7ce10c3bd5ee5602742ec33b2532310ff9cf73b79f3c133e5a5f68",
+    "license": "GPL-2.0-or-later"
+  },
+  "buildDependencies": {
+    "talloc": {
+      "version": "2.4.3",
+      "sourceUrl": "https://download.samba.org/pub/talloc/talloc-2.4.3.tar.gz",
+      "sha256": "dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd",
+      "license": "LGPL-3.0-or-later"
+    }
+  },
+  "patches": [],
+  "binary": {
+    "abi": "arm64-v8a",
+    "minimumApi": 34,
+    "runtime": {
+      "fileName": "libproot.so",
+      "sizeBytes": 186160,
+      "sha256": "6aebbce1c6fe4f47284d1339fe8af50252316174e5d4c5610f99626486183cb7"
+    },
+    "loader": {
+      "fileName": "libproot-loader.so",
+      "sizeBytes": 17944,
+      "sha256": "e6cf9fe83f5aa356213d48951d97efa584e6c95ae7fb3de77466bea6136d6a55"
+    }
+  }
 }
