@@ -52,6 +52,7 @@ import com.deskforge.app.BuildConfig
 import com.deskforge.app.R
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RuntimeCapabilities
+import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 
 private enum class Destination { WORKSPACES, DIAGNOSTICS, SETTINGS }
@@ -61,15 +62,15 @@ fun DeskForgeApp(
     sessionState: SessionState,
     capabilities: RuntimeCapabilities?,
     isInstalled: Boolean,
-    microphoneEnabled: Boolean,
+    requiresUpdate: Boolean,
+    desktopCallbacks: DesktopSurfaceCallbacks,
     onInstall: () -> Unit,
     onCapabilityCheck: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
-    onMicrophoneChanged: (Boolean) -> Unit,
 ) {
-    if (sessionState is SessionState.Running) {
-        DesktopSessionScreen(sessionState, onStop)
+    if (sessionState is SessionState.Starting || sessionState is SessionState.Running || sessionState is SessionState.Stopping) {
+        DesktopSessionScreen(sessionState, onStop, desktopCallbacks)
         return
     }
 
@@ -115,11 +116,12 @@ fun DeskForgeApp(
                     Destination.WORKSPACES -> WorkspaceScreen(
                         sessionState = sessionState,
                         isInstalled = isInstalled,
+                        requiresUpdate = requiresUpdate,
                         onInstall = onInstall,
                         onStart = onStart,
                     )
                     Destination.DIAGNOSTICS -> DiagnosticsScreen(capabilities, onCapabilityCheck)
-                    Destination.SETTINGS -> SettingsScreen(microphoneEnabled, onMicrophoneChanged)
+                    Destination.SETTINGS -> SettingsScreen()
                 }
             }
         }
@@ -130,6 +132,7 @@ fun DeskForgeApp(
 private fun WorkspaceScreen(
     sessionState: SessionState,
     isInstalled: Boolean,
+    requiresUpdate: Boolean,
     onInstall: () -> Unit,
     onStart: () -> Unit,
 ) {
@@ -165,7 +168,10 @@ private fun WorkspaceScreen(
                         stringResource(R.string.fedora_subtitle),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(statusLabel(sessionState, isInstalled), color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        statusLabel(sessionState, isInstalled, requiresUpdate),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                     if (sessionState is SessionState.Preparing) {
                         LinearProgressIndicator(
                             progress = { sessionState.progress },
@@ -173,14 +179,22 @@ private fun WorkspaceScreen(
                         )
                     }
                     if (sessionState is SessionState.Failed) {
-                        Text(sessionState.message, color = MaterialTheme.colorScheme.error)
+                        Text(failureLabel(sessionState.reason), color = MaterialTheme.colorScheme.error)
                     }
                 }
                 Button(
                     onClick = if (isInstalled) onStart else onInstall,
                     enabled = sessionState !is SessionState.Preparing && sessionState !is SessionState.Starting,
                 ) {
-                    Text(stringResource(if (isInstalled) R.string.action_start else R.string.action_install))
+                    Text(
+                        stringResource(
+                            when {
+                                isInstalled -> R.string.action_start
+                                requiresUpdate -> R.string.action_update
+                                else -> R.string.action_install
+                            },
+                        ),
+                    )
                 }
             }
         }
@@ -229,7 +243,7 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
 }
 
 @Composable
-private fun SettingsScreen(microphoneEnabled: Boolean, onMicrophoneChanged: (Boolean) -> Unit) {
+private fun SettingsScreen() {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -244,18 +258,22 @@ private fun SettingsScreen(microphoneEnabled: Boolean, onMicrophoneChanged: (Boo
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.microphone_label), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        stringResource(R.string.microphone_summary),
+                        stringResource(R.string.microphone_unavailable_summary),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = microphoneEnabled, onCheckedChange = onMicrophoneChanged)
+                Switch(checked = false, onCheckedChange = null, enabled = false)
             }
         }
     }
 }
 
 @Composable
-private fun DesktopSessionScreen(state: SessionState.Running, onStop: () -> Unit) {
+private fun DesktopSessionScreen(
+    state: SessionState,
+    onStop: () -> Unit,
+    callbacks: DesktopSurfaceCallbacks,
+) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
@@ -263,18 +281,29 @@ private fun DesktopSessionScreen(state: SessionState.Running, onStop: () -> Unit
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("DeskForge", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-            Text("PID ${state.processId}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.weight(1f))
             Text(
-                when (state.rendererMode) {
-                    is RendererMode.Accelerated -> stringResource(R.string.renderer_accelerated)
-                    is RendererMode.Software -> stringResource(R.string.renderer_software)
+                when (state) {
+                    SessionState.Starting -> stringResource(R.string.status_starting)
+                    SessionState.Stopping -> stringResource(R.string.status_stopping)
+                    is SessionState.Running -> stringResource(R.string.session_pid, state.processId)
+                    else -> ""
                 },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.weight(1f))
+            if (state is SessionState.Running) {
+                Text(
+                    when (state.rendererMode) {
+                        is RendererMode.Accelerated -> stringResource(R.string.renderer_accelerated)
+                        is RendererMode.Software -> stringResource(R.string.renderer_software)
+                    },
+                )
+            }
             OutlinedButton(onClick = onStop) { Text(stringResource(R.string.action_stop)) }
         }
         AndroidView(
-            factory = { context -> DesktopSurface(context) },
+            factory = { context -> DesktopSurface(context, callbacks) },
+            update = { surface -> surface.callbacks = callbacks },
             modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(12.dp)),
         )
     }
@@ -316,15 +345,35 @@ private fun destinationGlyph(destination: Destination): String = when (destinati
 }
 
 @Composable
-private fun statusLabel(state: SessionState, installed: Boolean): String = when (state) {
+private fun statusLabel(state: SessionState, installed: Boolean, requiresUpdate: Boolean): String = when (state) {
     is SessionState.Running -> stringResource(R.string.status_running)
     is SessionState.Preparing -> stringResource(R.string.action_install)
     SessionState.Starting -> stringResource(R.string.action_start)
     SessionState.Stopping -> stringResource(R.string.action_stop)
-    is SessionState.Failed -> state.message
-    SessionState.Idle -> stringResource(if (installed) R.string.status_installed else R.string.status_ready)
+    is SessionState.Failed -> failureLabel(state.reason)
+    SessionState.Idle -> stringResource(
+        when {
+            installed -> R.string.status_installed
+            requiresUpdate -> R.string.status_update_required
+            else -> R.string.status_ready
+        },
+    )
 }
 
 @Composable
 private fun readinessLabel(available: Boolean): String =
     stringResource(if (available) R.string.status_available else R.string.status_unavailable)
+
+@Composable
+private fun failureLabel(reason: SessionFailure): String = stringResource(
+    when (reason) {
+        SessionFailure.WORKSPACE_UNAVAILABLE -> R.string.error_workspace_unavailable
+        SessionFailure.WAITING_FOR_WIFI -> R.string.error_waiting_for_wifi
+        SessionFailure.INSTALL_FAILED -> R.string.error_install_failed
+        SessionFailure.RUNTIME_UNAVAILABLE -> R.string.runtime_unavailable
+        SessionFailure.SESSION_ALREADY_RUNNING -> R.string.error_session_already_running
+        SessionFailure.SESSION_START_FAILED -> R.string.error_session_start_failed
+        SessionFailure.SESSION_STOP_FAILED -> R.string.error_session_stop_failed
+        SessionFailure.DISPLAY_DISCONNECTED -> R.string.error_display_disconnected
+    },
+)

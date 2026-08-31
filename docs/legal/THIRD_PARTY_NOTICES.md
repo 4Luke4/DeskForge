@@ -29,3 +29,11 @@ SBOM and license inventory for the exact artifacts placed in an Android App Bund
 
 Fedora and XFCE names remain the property of their respective owners. DeskForge is not affiliated
 with or endorsed by the Fedora Project or XFCE project.
+
+## TigerVNC
+
+- Project: <https://github.com/TigerVNC/tigervnc>
+- Fedora package: 1.16.2-4.fc44
+- License: GPL-2.0-or-later with separately identified X.Org and other component terms
+- Integration: separately executed `Xvnc` inside the Fedora guest; no TigerVNC code is linked into DeskForge
+- Source: exact Fedora source RPM retained with every prepared payload and release candidate

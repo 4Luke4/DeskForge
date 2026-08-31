@@ -27,15 +27,18 @@ approved documents, uses private Unix sockets, and exports no Android service or
   and stale-session recovery without following links.
 - **Guest persistence after stop:** a dedicated process group, `--kill-on-exit`, synchronous reap,
   and stale-session recovery.
-- **Unauthorized audio capture:** microphone disabled by default, Android runtime permission,
-  per-session environment exposure, and a visible enabled state.
+- **Unauthorized audio capture:** no microphone permission or guest capture bridge is present in this
+  milestone; a future host must require Android permission and explicit per-session consent.
 - **GPU incompatibility:** preliminary Vulkan-loader probing with an explicit software fallback.
   Device/driver self-tests remain a production release gate.
+- **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
+  allocations and text, validates rectangle arithmetic and negotiated security, and terminates the
+  session on malformed or unsupported protocol input. Clipboard messages are disabled and discarded.
 - **Sensitive diagnostics:** structured messages without user document contents, environment
   secrets, or signing data.
 
 ## Release validation
 
-The production threat model must be revisited after the display/audio hosts and physical-device
-matrix are complete. Google Play executable-code treatment and every copyleft distribution
+The production threat model must be revisited after accelerated display, clipboard, audio, and the
+physical-device matrix are complete. Google Play executable-code treatment and every copyleft distribution
 obligation require explicit review before publication.

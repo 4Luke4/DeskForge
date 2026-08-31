@@ -79,3 +79,6 @@ gradle.beforeProject {
 rootProject.name = "DeskForge"
 include(":app")
 include(":fedora_xfce_44")
+include(":fedora_xfce_44_1")
+include(":fedora_xfce_44_2")
+include(":fedora_xfce_44_3")

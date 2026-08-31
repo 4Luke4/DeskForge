@@ -1,133 +1,233 @@
 package com.deskforge.app
 
 import android.Manifest
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.IBinder
+import android.view.Surface
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import com.deskforge.app.engine.FedoraAssetInstaller
+import androidx.lifecycle.repeatOnLifecycle
 import com.deskforge.app.engine.NativeDeskForgeEngine
+import com.deskforge.app.model.DesktopViewport
 import com.deskforge.app.model.RuntimeCapabilities
+import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
+import com.deskforge.app.ui.DesktopSurfaceCallbacks
 import com.deskforge.app.ui.DeskForgeApp
 import com.deskforge.app.ui.theme.DeskForgeTheme
-import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
-    private lateinit var engine: NativeDeskForgeEngine
-    private lateinit var installer: FedoraAssetInstaller
-    private var sessionState: SessionState by mutableStateOf(SessionState.Idle)
-    private var capabilities: RuntimeCapabilities? by mutableStateOf(null)
-    private var rootfsPath: String? by mutableStateOf(null)
-    private var microphoneEnabled: Boolean by mutableStateOf(false)
+    private val workspaceViewModel: WorkspaceViewModel by viewModels()
+    private lateinit var diagnosticsEngine: NativeDeskForgeEngine
+    private var sessionState: SessionState = SessionState.Idle
+        set(value) {
+            field = value
+            renderState.value = value
+        }
+    private val renderState = androidx.compose.runtime.mutableStateOf<SessionState>(SessionState.Idle)
+    private val capabilityState = androidx.compose.runtime.mutableStateOf<RuntimeCapabilities?>(null)
+    private val rootfsState = androidx.compose.runtime.mutableStateOf<String?>(null)
+    private val updateRequiredState = androidx.compose.runtime.mutableStateOf(false)
+    private var sessionService: DeskForgeSessionService? = null
+    private var serviceBound = false
+    private var stateCollection: Job? = null
+    private var currentSurface: Surface? = null
+    private var currentViewport: DesktopViewport? = null
+    private var downloadConfirmationShown = false
 
-    private val microphonePermission = registerForActivityResult(
+    private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted -> microphoneEnabled = granted }
+    ) { /* Denial does not block the foreground session or its in-app stop control. */ }
+
+    private val downloadConfirmation = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { downloadConfirmationShown = false }
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            val localBinder = binder as? DeskForgeSessionService.LocalBinder ?: return
+            sessionService = localBinder.service
+            serviceBound = true
+            stateCollection?.cancel()
+            stateCollection = lifecycleScope.launch {
+                localBinder.service.state.collectLatest { state ->
+                    if (state == SessionState.Idle &&
+                        (workspaceViewModel.state.value.progress != null ||
+                            workspaceViewModel.state.value.failure != null)
+                    ) {
+                        applyWorkspaceState(workspaceViewModel.state.value)
+                    } else {
+                        sessionState = state
+                    }
+                    if (state is SessionState.Starting) attachCurrentSurface()
+                }
+            }
+            attachCurrentSurface()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            stateCollection?.cancel()
+            stateCollection = null
+            sessionService = null
+            serviceBound = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        engine = NativeDeskForgeEngine(this)
-        installer = FedoraAssetInstaller(this)
-        rootfsPath = existingRootfsPath()
-        engine.activeSessionState()?.let { activeState -> sessionState = activeState }
+        diagnosticsEngine = NativeDeskForgeEngine(this)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                workspaceViewModel.state.collectLatest(::applyWorkspaceState)
+            }
+        }
 
         setContent {
             DeskForgeTheme {
                 DeskForgeApp(
-                    sessionState = sessionState,
-                    capabilities = capabilities,
-                    isInstalled = rootfsPath != null,
-                    microphoneEnabled = microphoneEnabled,
+                    sessionState = renderState.value,
+                    capabilities = capabilityState.value,
+                    isInstalled = rootfsState.value != null,
+                    requiresUpdate = updateRequiredState.value,
+                    desktopCallbacks = DesktopSurfaceCallbacks(
+                        onSurfaceReady = ::onSurfaceReady,
+                        onSurfaceResized = ::onSurfaceResized,
+                        onSurfaceDestroyed = ::onSurfaceDestroyed,
+                        onPointer = ::onPointer,
+                        onKey = ::onKey,
+                    ),
                     onInstall = ::installFedora,
                     onCapabilityCheck = ::inspectCapabilities,
                     onStart = ::startSession,
                     onStop = ::stopSession,
-                    onMicrophoneChanged = ::updateMicrophoneEnabled,
                 )
             }
         }
     }
 
-    override fun onDestroy() {
-        installer.close()
-        super.onDestroy()
+    override fun onStart() {
+        super.onStart()
+        bindService(Intent(this, DeskForgeSessionService::class.java), connection, Context.BIND_AUTO_CREATE)
+    }
+
+    override fun onStop() {
+        sessionService?.detachSurface()
+        if (serviceBound) unbindService(connection)
+        serviceBound = false
+        sessionService = null
+        stateCollection?.cancel()
+        stateCollection = null
+        super.onStop()
     }
 
     private fun installFedora() {
-        sessionState = SessionState.Preparing(0f)
-        installer.install { event ->
-            runOnUiThread {
-                sessionState = when (event) {
-                    is FedoraAssetInstaller.InstallEvent.Progress -> SessionState.Preparing(event.fraction)
-                    FedoraAssetInstaller.InstallEvent.WaitingForWifi ->
-                        SessionState.Failed("Waiting for Wi-Fi approval in Google Play", recoverable = true)
-                    is FedoraAssetInstaller.InstallEvent.Installed -> {
-                        rootfsPath = event.rootfsPath
-                        SessionState.Idle
-                    }
-                    is FedoraAssetInstaller.InstallEvent.Failed ->
-                        SessionState.Failed(event.message, recoverable = true)
-                }
-            }
-        }
+        workspaceViewModel.install()
     }
 
     private fun startSession() {
-        val path = rootfsPath
-        if (path == null) {
-            sessionState = SessionState.Failed("Install Fedora before starting a session", recoverable = true)
+        val rootfs = rootfsState.value
+        if (rootfs == null) {
+            sessionState = SessionState.Failed(SessionFailure.WORKSPACE_UNAVAILABLE, true)
             return
         }
-        sessionState = SessionState.Starting
-        lifecycleScope.launch {
-            sessionState = withContext(Dispatchers.IO) {
-                engine.startSession(path, microphoneEnabled)
-            }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        sessionState = SessionState.Starting
+        val intent = Intent(this, DeskForgeSessionService::class.java)
+            .setAction(DeskForgeSessionService.ACTION_PREPARE)
+            .putExtra(DeskForgeSessionService.EXTRA_ROOTFS, rootfs)
+        ContextCompat.startForegroundService(this, intent)
+        attachCurrentSurface()
     }
 
     private fun stopSession() {
         sessionState = SessionState.Stopping
-        lifecycleScope.launch {
-            sessionState = withContext(Dispatchers.IO) { engine.stopSession() }
-        }
+        sessionService?.stopDesktop() ?: startService(
+            Intent(this, DeskForgeSessionService::class.java).setAction(DeskForgeSessionService.ACTION_STOP),
+        )
     }
 
     private fun inspectCapabilities() {
         lifecycleScope.launch {
-            capabilities = withContext(Dispatchers.IO) { engine.inspectCapabilities() }
+            capabilityState.value = withContext(Dispatchers.IO) { diagnosticsEngine.inspectCapabilities() }
         }
     }
 
-    private fun updateMicrophoneEnabled(enabled: Boolean) {
-        if (!enabled) {
-            microphoneEnabled = false
+    private fun onSurfaceReady(surface: Surface, viewport: DesktopViewport) {
+        currentSurface = surface
+        currentViewport = viewport
+        attachCurrentSurface()
+    }
+
+    private fun onSurfaceResized(viewport: DesktopViewport) {
+        currentViewport = viewport
+        sessionService?.resizeDisplay(viewport)
+    }
+
+    private fun onSurfaceDestroyed() {
+        sessionService?.detachSurface()
+        currentSurface = null
+        currentViewport = null
+    }
+
+    private fun attachCurrentSurface() {
+        val surface = currentSurface ?: return
+        val viewport = currentViewport ?: return
+        sessionService?.attachSurface(surface, viewport)
+    }
+
+    private fun onPointer(x: Int, y: Int, buttons: Int) {
+        sessionService?.sendPointer(x, y, buttons)
+    }
+
+    private fun onKey(keysym: Int, pressed: Boolean) {
+        sessionService?.sendKey(keysym, pressed)
+    }
+
+    private fun applyWorkspaceState(state: WorkspaceState) {
+        rootfsState.value = state.rootfsPath
+        updateRequiredState.value = state.updateRequired
+        if (state.failure == SessionFailure.WAITING_FOR_WIFI && !downloadConfirmationShown) {
+            downloadConfirmationShown = workspaceViewModel.showDownloadConfirmation(downloadConfirmation)
+        } else if (state.failure != SessionFailure.WAITING_FOR_WIFI) {
+            downloadConfirmationShown = false
+        }
+        if (sessionState is SessionState.Starting || sessionState is SessionState.Running ||
+            sessionState is SessionState.Stopping
+        ) {
             return
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            microphoneEnabled = true
-        } else {
-            microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+        sessionState = when {
+            state.progress != null -> SessionState.Preparing(state.progress)
+            state.failure != null -> SessionState.Failed(state.failure, recoverable = true)
+            sessionState is SessionState.Preparing -> SessionState.Idle
+            sessionState is SessionState.Failed &&
+                (sessionState as SessionState.Failed).reason in INSTALL_FAILURES -> SessionState.Idle
+            else -> sessionState
         }
     }
 
-    private fun existingRootfsPath(): String? {
-        val rootfs = File(filesDir, "distros/fedora-xfce-44/rootfs")
-        return rootfs.takeIf {
-            // Both the launch command and atomic provenance marker are required for activation.
-            File(it, "usr/bin/startxfce4").isFile && File(it, ".deskforge-source-sha256").isFile
-        }?.absolutePath
+    private companion object {
+        private val INSTALL_FAILURES = setOf(SessionFailure.WAITING_FOR_WIFI, SessionFailure.INSTALL_FAILED)
     }
 }

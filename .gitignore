@@ -14,6 +14,8 @@ signing.properties
 # Generated and independently verified Play Asset Delivery payloads
 fedora_xfce_44/src/main/assets/rootfs.tar.gz
 fedora_xfce_44/src/main/assets/rootfs.tar.gz.sha256
+fedora_xfce_44/src/main/assets/payload-manifest.json
+fedora_xfce_44*/src/main/assets/rootfs.part*
 
 # Log/OS Files
 *.log

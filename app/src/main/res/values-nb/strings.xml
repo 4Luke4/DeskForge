@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Diagnostikk</string>
     <string name="navigation_settings">Innstillinger</string>
     <string name="welcome_title">Bygg et skrivebord laget for nettbrettet ditt</string>
-    <string name="welcome_body">Kjør et privat Fedora XFCE-arbeidsområde lokalt, med integrasjon for nettbrett, tastatur, mus og lyd.</string>
+    <string name="welcome_body">Kjør et privat Fedora XFCE-arbeidsområde lokalt, med integrasjon for nettbrett, tastatur og mus.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Offisielt AArch64-bilde · Levert via Play</string>
     <string name="status_ready">Klar til installasjon</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Tilgjengelig</string>
     <string name="status_unavailable">Utilgjengelig</string>
     <string name="diagnostics_version_code">Versjonskode %1$d</string>
+    <string name="status_update_required">Arbeidsområdet må oppdateres</string>
+    <string name="status_starting">Starter skrivebordet</string>
+    <string name="status_stopping">Stopper skrivebordet</string>
+    <string name="action_update">Oppdater arbeidsområdet</string>
+    <string name="microphone_unavailable_summary">Ikke tilgjengelig før lydintegrasjon med tilgangskontroll er ferdig.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Skrivebordsøkter</string>
+    <string name="session_notification_title">Fedora-skrivebord</string>
+    <string name="session_notification_starting">Starter det lokale skrivebordet</string>
+    <string name="session_notification_running">Det lokale skrivebordet kjører</string>
+    <string name="error_workspace_unavailable">Arbeidsområdet er utilgjengelig. Installer eller oppdater Fedora før oppstart.</string>
+    <string name="error_waiting_for_wifi">Godkjenning i Google Play kreves for å fortsette nedlastingen.</string>
+    <string name="error_install_failed">Installasjonen av Fedora-arbeidsområdet mislyktes. Prøv igjen.</string>
+    <string name="error_session_already_running">En administrert Linux-økt kjører allerede.</string>
+    <string name="error_session_start_failed">Fedora-skrivebordet kunne ikke startes.</string>
+    <string name="error_session_stop_failed">Fedora-skrivebordet kunne ikke stoppes på riktig måte.</string>
+    <string name="error_display_disconnected">Tilkoblingen til Fedora-skrivebordet ble uventet avsluttet.</string>
 </resources>

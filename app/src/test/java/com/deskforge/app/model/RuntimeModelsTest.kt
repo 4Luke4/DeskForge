@@ -20,4 +20,18 @@ class RuntimeModelsTest {
 
         assertTrue(renderer.reason.isNotBlank())
     }
+
+    @Test
+    fun `desktop viewport retains bounded tablet geometry`() {
+        val viewport = DesktopViewport(widthPx = 2560, heightPx = 1600, densityDpi = 320)
+
+        assertEquals(2560, viewport.widthPx)
+        assertEquals(1600, viewport.heightPx)
+        assertEquals(320, viewport.densityDpi)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `desktop viewport rejects an oversized framebuffer`() {
+        DesktopViewport(widthPx = 4097, heightPx = 4096, densityDpi = 320)
+    }
 }

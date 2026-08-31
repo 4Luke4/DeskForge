@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Tanılama</string>
     <string name="navigation_settings">Ayarlar</string>
     <string name="welcome_title">Tabletiniz için tasarlanmış bir masaüstü oluşturun</string>
-    <string name="welcome_body">Tablet, klavye, fare ve ses entegrasyonuyla özel bir Fedora XFCE çalışma alanını yerel olarak çalıştırın.</string>
+    <string name="welcome_body">Tablet, klavye ve fare entegrasyonuyla özel bir Fedora XFCE çalışma alanını yerel olarak çalıştırın.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Resmî AArch64 kalıbı · Play üzerinden sunulur</string>
     <string name="status_ready">Kuruluma hazır</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Kullanılabilir</string>
     <string name="status_unavailable">Kullanılamıyor</string>
     <string name="diagnostics_version_code">Sürüm kodu %1$d</string>
+    <string name="status_update_required">Çalışma alanı güncellemesi gerekli</string>
+    <string name="status_starting">Masaüstü başlatılıyor</string>
+    <string name="status_stopping">Masaüstü durduruluyor</string>
+    <string name="action_update">Çalışma alanını güncelle</string>
+    <string name="microphone_unavailable_summary">İzin denetimli ses entegrasyonu aşamasına kadar kullanılamaz.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Masaüstü oturumları</string>
+    <string name="session_notification_title">Fedora masaüstü</string>
+    <string name="session_notification_starting">Yerel masaüstü başlatılıyor</string>
+    <string name="session_notification_running">Yerel masaüstü çalışıyor</string>
+    <string name="error_workspace_unavailable">Çalışma alanı kullanılamıyor. Başlatmadan önce Fedora’yı yükleyin veya güncelleyin.</string>
+    <string name="error_waiting_for_wifi">İndirmeye devam etmek için Google Play onayı gerekiyor.</string>
+    <string name="error_install_failed">Fedora çalışma alanı yüklenemedi. Tekrar deneyin.</string>
+    <string name="error_session_already_running">Yönetilen bir Linux oturumu zaten çalışıyor.</string>
+    <string name="error_session_start_failed">Fedora masaüstü başlatılamadı.</string>
+    <string name="error_session_stop_failed">Fedora masaüstü düzgün şekilde durdurulamadı.</string>
+    <string name="error_display_disconnected">Fedora masaüstü bağlantısı beklenmedik şekilde sonlandı.</string>
 </resources>

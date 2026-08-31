@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Диагностика</string>
     <string name="navigation_settings">Настройки</string>
     <string name="welcome_title">Создайте рабочий стол для планшета</string>
-    <string name="welcome_body">Запускайте локальное приватное пространство Fedora XFCE с поддержкой планшета, клавиатуры, мыши и звука.</string>
+    <string name="welcome_body">Запускайте локальное приватное пространство Fedora XFCE с поддержкой планшета, клавиатуры и мыши.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Официальный образ AArch64 · Доставка через Play</string>
     <string name="status_ready">Готово к установке</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Доступно</string>
     <string name="status_unavailable">Недоступно</string>
     <string name="diagnostics_version_code">Код версии %1$d</string>
+    <string name="status_update_required">Требуется обновление рабочей среды</string>
+    <string name="status_starting">Запуск рабочего стола</string>
+    <string name="status_stopping">Остановка рабочего стола</string>
+    <string name="action_update">Обновить рабочую среду</string>
+    <string name="microphone_unavailable_summary">Недоступно до этапа интеграции звука с контролем разрешений.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Сеансы рабочего стола</string>
+    <string name="session_notification_title">Рабочий стол Fedora</string>
+    <string name="session_notification_starting">Запуск локального рабочего стола</string>
+    <string name="session_notification_running">Локальный рабочий стол запущен</string>
+    <string name="error_workspace_unavailable">Рабочая среда недоступна. Установите или обновите Fedora перед запуском.</string>
+    <string name="error_waiting_for_wifi">Для продолжения загрузки требуется подтверждение в Google Play.</string>
+    <string name="error_install_failed">Не удалось установить рабочую среду Fedora. Повторите попытку.</string>
+    <string name="error_session_already_running">Управляемый сеанс Linux уже запущен.</string>
+    <string name="error_session_start_failed">Не удалось запустить рабочий стол Fedora.</string>
+    <string name="error_session_stop_failed">Не удалось корректно остановить рабочий стол Fedora.</string>
+    <string name="error_display_disconnected">Соединение с рабочим столом Fedora неожиданно прервано.</string>
 </resources>

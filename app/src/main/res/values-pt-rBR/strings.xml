@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Diagnóstico</string>
     <string name="navigation_settings">Configurações</string>
     <string name="welcome_title">Crie um desktop feito para o seu tablet</string>
-    <string name="welcome_body">Execute localmente um ambiente Fedora XFCE privado, integrado a tablet, teclado, mouse e áudio.</string>
+    <string name="welcome_body">Execute localmente um ambiente Fedora XFCE privado, integrado a tablet, teclado e mouse.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Imagem AArch64 oficial · Entregue pelo Play</string>
     <string name="status_ready">Pronto para instalar</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Disponível</string>
     <string name="status_unavailable">Indisponível</string>
     <string name="diagnostics_version_code">Código da versão %1$d</string>
+    <string name="status_update_required">Atualização do espaço necessária</string>
+    <string name="status_starting">Iniciando a área de trabalho</string>
+    <string name="status_stopping">Encerrando a área de trabalho</string>
+    <string name="action_update">Atualizar espaço</string>
+    <string name="microphone_unavailable_summary">Indisponível até o marco de integração de áudio com permissão.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Sessões da área de trabalho</string>
+    <string name="session_notification_title">Área de trabalho Fedora</string>
+    <string name="session_notification_starting">Iniciando a área de trabalho local</string>
+    <string name="session_notification_running">A área de trabalho local está em execução</string>
+    <string name="error_workspace_unavailable">O espaço de trabalho não está disponível. Instale ou atualize o Fedora antes de iniciar.</string>
+    <string name="error_waiting_for_wifi">É necessária a aprovação do Google Play para continuar o download.</string>
+    <string name="error_install_failed">Falha ao instalar o espaço de trabalho Fedora. Tente novamente.</string>
+    <string name="error_session_already_running">Uma sessão Linux gerenciada já está em execução.</string>
+    <string name="error_session_start_failed">Não foi possível iniciar a área de trabalho Fedora.</string>
+    <string name="error_session_stop_failed">Não foi possível encerrar corretamente a área de trabalho Fedora.</string>
+    <string name="error_display_disconnected">A conexão com a área de trabalho Fedora foi encerrada inesperadamente.</string>
 </resources>

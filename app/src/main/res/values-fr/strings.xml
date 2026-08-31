@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Diagnostics</string>
     <string name="navigation_settings">Paramètres</string>
     <string name="welcome_title">Façonnez un bureau conçu pour votre tablette</string>
-    <string name="welcome_body">Exécutez localement un espace Fedora XFCE privé, intégré à la tablette, au clavier, à la souris et à l’audio.</string>
+    <string name="welcome_body">Exécutez localement un espace Fedora XFCE privé, intégré à la tablette, au clavier et à la souris.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Image AArch64 officielle · Distribuée par Play</string>
     <string name="status_ready">Prêt à installer</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Disponible</string>
     <string name="status_unavailable">Indisponible</string>
     <string name="diagnostics_version_code">Code de version %1$d</string>
+    <string name="status_update_required">Mise à jour de l’espace requise</string>
+    <string name="status_starting">Démarrage du bureau</string>
+    <string name="status_stopping">Arrêt du bureau</string>
+    <string name="action_update">Mettre à jour l’espace</string>
+    <string name="microphone_unavailable_summary">Indisponible avant l’étape d’intégration audio soumise à autorisation.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Sessions de bureau</string>
+    <string name="session_notification_title">Bureau Fedora</string>
+    <string name="session_notification_starting">Démarrage du bureau local</string>
+    <string name="session_notification_running">Le bureau local est en cours d’exécution</string>
+    <string name="error_workspace_unavailable">L’espace de travail est indisponible. Installez ou mettez à jour Fedora avant de le démarrer.</string>
+    <string name="error_waiting_for_wifi">L’autorisation de Google Play est requise pour poursuivre le téléchargement.</string>
+    <string name="error_install_failed">L’installation de l’espace de travail Fedora a échoué. Réessayez.</string>
+    <string name="error_session_already_running">Une session Linux gérée est déjà en cours d’exécution.</string>
+    <string name="error_session_start_failed">Le bureau Fedora n’a pas pu démarrer.</string>
+    <string name="error_session_stop_failed">Le bureau Fedora n’a pas pu s’arrêter correctement.</string>
+    <string name="error_display_disconnected">La connexion au bureau Fedora s’est interrompue de manière inattendue.</string>
 </resources>

@@ -34,11 +34,7 @@ class SafeTarExtractor {
             extract(BufferedInputStream(input), staging)
             // Callers can place provenance metadata inside the staged tree before it is visible.
             prepareActivation(staging)
-            try {
-                Files.move(staging, destination, StandardCopyOption.ATOMIC_MOVE)
-            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-                Files.move(staging, destination)
-            }
+            Files.move(staging, destination, StandardCopyOption.ATOMIC_MOVE)
         } catch (failure: Exception) {
             deleteTree(staging)
             throw failure

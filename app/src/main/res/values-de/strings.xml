@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Diagnose</string>
     <string name="navigation_settings">Einstellungen</string>
     <string name="welcome_title">Ein Desktop, geschaffen für Ihr Tablet</string>
-    <string name="welcome_body">Nutzen Sie lokal einen privaten Fedora-XFCE-Arbeitsbereich mit Tablet-, Tastatur-, Maus- und Audiointegration.</string>
+    <string name="welcome_body">Nutzen Sie lokal einen privaten Fedora-XFCE-Arbeitsbereich mit Tablet-, Tastatur- und Mausintegration.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Offizielles AArch64-Abbild · Über Play bereitgestellt</string>
     <string name="status_ready">Installationsbereit</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Verfügbar</string>
     <string name="status_unavailable">Nicht verfügbar</string>
     <string name="diagnostics_version_code">Versionscode %1$d</string>
+    <string name="status_update_required">Arbeitsbereich muss aktualisiert werden</string>
+    <string name="status_starting">Desktop wird gestartet</string>
+    <string name="status_stopping">Desktop wird beendet</string>
+    <string name="action_update">Arbeitsbereich aktualisieren</string>
+    <string name="microphone_unavailable_summary">Bis zum berechtigungsgeschützten Audio-Meilenstein nicht verfügbar.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Desktop-Sitzungen</string>
+    <string name="session_notification_title">Fedora-Desktop</string>
+    <string name="session_notification_starting">Lokaler Desktop wird gestartet</string>
+    <string name="session_notification_running">Lokaler Desktop wird ausgeführt</string>
+    <string name="error_workspace_unavailable">Der Arbeitsbereich ist nicht verfügbar. Installieren oder aktualisieren Sie Fedora vor dem Start.</string>
+    <string name="error_waiting_for_wifi">Zum Fortsetzen des Downloads ist eine Genehmigung in Google Play erforderlich.</string>
+    <string name="error_install_failed">Die Installation des Fedora-Arbeitsbereichs ist fehlgeschlagen. Versuchen Sie es erneut.</string>
+    <string name="error_session_already_running">Eine verwaltete Linux-Sitzung wird bereits ausgeführt.</string>
+    <string name="error_session_start_failed">Der Fedora-Desktop konnte nicht gestartet werden.</string>
+    <string name="error_session_stop_failed">Der Fedora-Desktop konnte nicht ordnungsgemäß beendet werden.</string>
+    <string name="error_display_disconnected">Die Verbindung zum Fedora-Desktop wurde unerwartet beendet.</string>
 </resources>
