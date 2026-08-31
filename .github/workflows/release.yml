@@ -55,7 +55,14 @@ jobs:
           test -f fedora_xfce_44/src/main/assets/rootfs.tar.gz
           test -f fedora_xfce_44/src/main/assets/rootfs.tar.gz.sha256
           test -x app/src/main/jniLibs/arm64-v8a/libproot.so
+          test -x app/src/main/jniLibs/arm64-v8a/libproot-loader.so
           (cd fedora_xfce_44/src/main/assets && sha256sum --check rootfs.tar.gz.sha256)
+          scripts/verify-proot-binary.sh \
+            app/src/main/jniLibs/arm64-v8a/libproot.so \
+            app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+
+      - name: Prepare corresponding source
+        run: scripts/package-proot-source.sh build/deskforge-proot-corresponding-source.tar.gz
 
       - name: Materialize ephemeral signing configuration
         env:
@@ -79,12 +86,16 @@ jobs:
       - name: Attest release bundle
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: app/build/outputs/bundle/release/*.aab
+          subject-path: |
+            app/build/outputs/bundle/release/*.aab
+            build/deskforge-proot-corresponding-source.tar.gz
 
       - name: Retain release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: deskforge-${{ inputs.tag }}-release-candidate
-          path: app/build/outputs/bundle/release/*.aab
+          path: |
+            app/build/outputs/bundle/release/*.aab
+            build/deskforge-proot-corresponding-source.tar.gz
           if-no-files-found: error
           retention-days: 30

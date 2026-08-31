@@ -78,7 +78,14 @@ jobs:
 
       - name: Compile analyzed sources
         if: matrix.language == 'cpp'
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
+        run: |
+          scripts/build-proot-android.sh \
+            build/codeql-proot/libproot.so \
+            build/codeql-proot/libproot-loader.so \
+            build/codeql-proot/work
+          scripts/verify-proot-binary.sh \
+            build/codeql-proot/libproot.so build/codeql-proot/libproot-loader.so --allow-unpinned
+          ./gradlew --no-daemon --stacktrace assembleDebug
 
       - name: Analyze
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4

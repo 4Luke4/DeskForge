@@ -18,8 +18,13 @@ approved documents, uses private Unix sockets, and exports no Android service or
 - **Archive traversal:** normalized relative paths, checksum-validated headers, deferred and
   root-confined links, no writes through symlink ancestors, rejection of device nodes, and
   transactional activation.
-- **Supply-chain replacement:** immutable SHA-256 manifests, Fedora OpenPGP verification, pinned
-  Actions, dependency review, SBOM generation, and provenance.
+- **Supply-chain replacement:** immutable source and executable SHA-256 manifests, reproducible
+  PRoot builds, packaged-byte comparison, Fedora OpenPGP verification, pinned Actions, dependency
+  review, SBOM generation, corresponding source, and provenance.
+- **Runtime replacement or loader persistence:** the installed PRoot ELF and loader are independently
+  size- and digest-checked before inspection and every launch. Both execute only from Android's
+  read-only native-library directory; app-private scratch storage is cleaned on launch failure, stop,
+  and stale-session recovery without following links.
 - **Guest persistence after stop:** a dedicated process group, `--kill-on-exit`, synchronous reap,
   and stale-session recovery.
 - **Unauthorized audio capture:** microphone disabled by default, Android runtime permission,

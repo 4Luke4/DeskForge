@@ -97,10 +97,14 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     JNIEnv* environment,
     jobject,
     jstring proot_path_value,
+    jstring proot_loader_path_value,
     jstring rootfs_path_value,
+    jstring runtime_directory_path_value,
     jboolean microphone_enabled) {
     const std::string proot_path = from_jstring(environment, proot_path_value);
+    const std::string proot_loader_path = from_jstring(environment, proot_loader_path_value);
     const std::string rootfs_path = from_jstring(environment, rootfs_path_value);
+    const std::string runtime_directory_path = from_jstring(environment, runtime_directory_path_value);
     std::lock_guard<std::mutex> lock(g_session_mutex);
 
     if (active_session_pid() > 0) {
@@ -111,8 +115,16 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         set_error("The verified PRoot runtime is unavailable");
         return -1;
     }
+    if (!is_regular_executable(proot_loader_path.c_str())) {
+        set_error("The verified PRoot runtime is unavailable");
+        return -1;
+    }
     if (!is_directory(rootfs_path.c_str())) {
         set_error("The selected root filesystem is unavailable");
+        return -1;
+    }
+    if (!is_directory(runtime_directory_path.c_str())) {
+        set_error("The PRoot temporary directory is unavailable");
         return -1;
     }
 
@@ -142,6 +154,14 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         setenv("LANG", "C.UTF-8", 1);
         setenv("DISPLAY", ":0", 1);
         setenv("PULSE_SERVER", "unix:/run/deskforge/pulse.sock", 1);
+        // Keep executable code in the signed native-lib directory; code cache is scratch only.
+        if (setenv("PROOT_LOADER", proot_loader_path.c_str(), 1) != 0 ||
+            setenv("PROOT_TMP_DIR", runtime_directory_path.c_str(), 1) != 0) {
+            const int launch_error = errno;
+            const ssize_t written = write(exec_status_pipe[1], &launch_error, sizeof(launch_error));
+            (void)written;
+            _exit(125);
+        }
         setenv("DESKFORGE_MICROPHONE", microphone_enabled == JNI_TRUE ? "enabled" : "disabled", 1);
         execl(
             proot_path.c_str(),

@@ -13,6 +13,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.2.0] - 2026-08-31
+
+### Added
+
+- Reproducible, checksum-pinned PRoot 5.4.0 build for API 34 ARM64 Android.
+- Exact installed-runtime integrity checks before capability reporting and every guest launch.
+- Read-only packaged PRoot loader execution with app-private scratch cleanup and stale-state recovery.
+- Independent ELF, APK, AAB, CodeQL, and ARM64 emulator verification paths.
+- Retained PRoot and talloc corresponding-source bundle with exact license and patch provenance.
+
+### Known limitations
+
+- The desktop display, input forwarding, clipboard, and audio bridges remain integration boundaries.
+- Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
+- Production distribution remains blocked on post-merge emulator evidence, human translation review,
+  physical tablet qualification, and legal and Play policy approval.
+
 ## [0.1.0] - 2026-08-30
 
 ### Added
@@ -33,5 +50,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/4Luke4/DeskForge/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/4Luke4/DeskForge/releases/tag/v0.1.0

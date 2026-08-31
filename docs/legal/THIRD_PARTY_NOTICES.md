@@ -11,6 +11,14 @@ SBOM and license inventory for the exact artifacts placed in an Android App Bund
 - Integration: separately executed binary; never linked into a DeskForge proprietary library
 - Source and DeskForge patches: must accompany every binary distribution through a durable source offer
 
+## talloc
+
+- Project: <https://talloc.samba.org/>
+- Version: 2.5.0
+- License: LGPL-3.0-or-later
+- Integration: statically linked only into the separately executed GPL PRoot binary
+- Source: official Samba release archive retained with PRoot's corresponding-source bundle
+
 ## Fedora Linux and XFCE
 
 - Fedora Project: <https://fedoraproject.org/>
