@@ -44,7 +44,9 @@ Repository policy requires verification through GitHub Actions. The workflows pe
 native builds, static analysis, unit tests, ARM64 emulator QA on API 34 and the latest available
 stable image (currently API 36), dependency review,
 CodeQL analysis, artifact checks, and supply-chain validation. Generated screenshots, UI trees,
-and logcat records are retained with emulator jobs.
+and logcat records are retained with emulator jobs. Because emulator provisioning is
+resource-intensive, maintainers dispatch emulator QA manually and only against the protected
+`main` branch; pull requests use the standard CI and security checks as merge evidence.
 
 No signing material belongs in the repository. The release workflow accepts ephemeral signing
 secrets only after Play and legal release gates have been approved.

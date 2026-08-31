@@ -6,7 +6,8 @@ and an explicit maintainer decision.
 
 | Gate | Required evidence | Merge blocker | Production blocker |
 | --- | --- | --- | --- |
-| GitHub verification | Required CI, CodeQL, dependency review, and API 34/latest-stable ARM64 emulator jobs pass | Yes | Yes |
+| Pull-request verification | Required CI, CodeQL, and dependency review jobs pass | Yes | Yes |
+| Emulator verification | Manually dispatched API 34/latest-stable ARM64 emulator jobs pass on protected `main` | No | Yes |
 | Runtime packaging | Reproducible, checksum-pinned ARM64 PRoot executable; corresponding GPL source and notices | No | Yes |
 | Fedora delivery | Signed-image verification and every generated Play asset pack below its enforced limit | No | Yes |
 | Desktop integration | XFCE frame, keyboard, mouse, touch, clipboard, playback, and permission-gated microphone evidence | No | Yes |

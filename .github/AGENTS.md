@@ -20,3 +20,5 @@ These instructions extend the repository root instructions for files under `.git
   across workflows. Shell scripts must enable strict error handling and quote expansions.
 - All workflow validation, dependency resolution, builds, tests, CodeQL analysis, and emulator work
   must run on GitHub-hosted workflows, never as local verification.
+- Keep ARM64 emulator QA manually dispatched and guard its resource-intensive jobs to the protected
+  `main` branch. Pull requests use the standard CI and security workflows as their merge evidence.
