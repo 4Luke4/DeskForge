@@ -12,10 +12,10 @@ fi
 
 output_binary="$1"
 output_loader="$2"
-work_directory="$3"
+work_directory="$(realpath --canonicalize-missing "$3")"
 android_sdk_root="${ANDROID_SDK_ROOT:?ANDROID_SDK_ROOT must identify the Android SDK}"
 
-case "$(realpath --canonicalize-missing "${work_directory}")" in
+case "${work_directory}" in
   /|"${repository_root}")
     echo "Refusing to use a broad PRoot work directory" >&2
     exit 1
