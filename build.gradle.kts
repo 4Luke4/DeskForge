@@ -28,10 +28,16 @@ val kotlinBuildToolCoordinates = setOf("org.jetbrains.kotlin:kotlin-gradle-plugi
 val auditedBuildDependencies = securedBuildDependencies +
     kotlinBuildToolCoordinates.associateWith { kotlinVersion }
 
+val secureBuildDependencyReports = mutableListOf<Provider<RegularFile>>()
 val secureBuildDependencyVerificationTasks = allprojects.map { auditedProject ->
+    val verificationReport =
+        auditedProject.layout.buildDirectory.file("reports/security/secure-build-dependencies.txt")
+    secureBuildDependencyReports += verificationReport
+
     auditedProject.tasks.register("verifySecureBuildDependenciesForProject") {
         group = "verification"
         description = "Verifies patched versions in this project's resolved dependency graphs."
+        outputs.file(verificationReport)
         notCompatibleWithConfigurationCache(
             "The task intentionally audits every resolvable project configuration",
         )
@@ -57,8 +63,6 @@ val secureBuildDependencyVerificationTasks = allprojects.map { auditedProject ->
             val failures = auditedBuildDependencies.mapNotNull { (coordinate, expectedVersion) ->
                 val actualVersions = observedVersions.getValue(coordinate)
                 when {
-                    actualVersions.isEmpty() && auditedProject == rootProject ->
-                        "$coordinate was not present in the root build-tool graph"
                     actualVersions.isEmpty() -> null
                     actualVersions != setOf(expectedVersion) ->
                         "$coordinate resolved to ${actualVersions.sorted()} instead of $expectedVersion"
@@ -79,6 +83,17 @@ val secureBuildDependencyVerificationTasks = allprojects.map { auditedProject ->
                         versions.single(),
                     )
                 }
+
+            val selectedVersions = observedVersions.filterValues { it.isNotEmpty() }
+                .mapValues { (_, versions) -> versions.single() }
+                .toSortedMap()
+            val reportFile = verificationReport.get().asFile
+            reportFile.parentFile.mkdirs()
+            reportFile.writeText(
+                selectedVersions.entries.joinToString(separator = "\n", postfix = "\n") {
+                    (coordinate, version) -> "$coordinate=$version"
+                },
+            )
         }
     }
 }
@@ -87,4 +102,43 @@ tasks.register("verifySecureBuildDependencies") {
     group = "verification"
     description = "Verifies patched versions across every project's resolved dependency graphs."
     dependsOn(secureBuildDependencyVerificationTasks)
+    inputs.files(secureBuildDependencyReports)
+    notCompatibleWithConfigurationCache(
+        "The task aggregates reports from every project's dependency audit",
+    )
+
+    doLast {
+        val observedVersions = auditedBuildDependencies.keys
+            .associateWith { mutableSetOf<String>() }
+
+        // Aggregate file reports instead of resolving another project's configurations unsafely.
+        secureBuildDependencyReports.forEach { report ->
+            report.get().asFile.readLines().filter { it.isNotBlank() }.forEach { entry ->
+                val separator = entry.lastIndexOf('=')
+                check(separator > 0 && separator < entry.lastIndex) {
+                    "Invalid secured dependency report entry: $entry"
+                }
+                val coordinate = entry.substring(0, separator)
+                val version = entry.substring(separator + 1)
+                observedVersions.getValue(coordinate).add(version)
+            }
+        }
+
+        val failures = auditedBuildDependencies.mapNotNull { (coordinate, expectedVersion) ->
+            val actualVersions = observedVersions.getValue(coordinate)
+            when {
+                actualVersions.isEmpty() -> "$coordinate was not present in any resolved graph"
+                actualVersions != setOf(expectedVersion) ->
+                    "$coordinate resolved to ${actualVersions.sorted()} instead of $expectedVersion"
+                else -> null
+            }
+        }
+        check(failures.isEmpty()) {
+            "Build dependency security verification failed:\n${failures.joinToString("\n")}"
+        }
+
+        auditedBuildDependencies.toSortedMap().forEach { (coordinate, version) ->
+            logger.lifecycle("Verified secured build dependency: {}:{}", coordinate, version)
+        }
+    }
 }
