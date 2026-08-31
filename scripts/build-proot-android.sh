@@ -145,7 +145,7 @@ EOF
 
 (
   cd "${talloc_source}"
-  env \
+  if ! env \
     AR="${ar}" \
     CC="${cc}" \
     CFLAGS="${common_cflags[*]}" \
@@ -159,7 +159,11 @@ EOF
       --disable-rpath \
       --disable-rpath-install \
       --cross-compile \
-      --cross-answers=cross-answers.txt
+      --cross-answers=cross-answers.txt; then
+    # Preserve Waf's detailed probe evidence when a future source update needs new answers.
+    find bin -type f -name config.log -exec tail -n 200 {} \;
+    exit 1
+  fi
   env SOURCE_DATE_EPOCH=1683936000 make --jobs=2
 )
 

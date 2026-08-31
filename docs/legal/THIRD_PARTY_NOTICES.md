@@ -14,7 +14,7 @@ SBOM and license inventory for the exact artifacts placed in an Android App Bund
 ## talloc
 
 - Project: <https://talloc.samba.org/>
-- Version: 2.5.0
+- Version: 2.4.3
 - License: LGPL-3.0-or-later
 - Integration: statically linked only into the separately executed GPL PRoot binary
 - Source: official Samba release archive retained with PRoot's corresponding-source bundle
