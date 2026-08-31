@@ -5,7 +5,7 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.2.0 adds the verified PRoot runtime for the Fedora XFCE vertical slice. It is not
+> Version 0.3.0 adds the interactive Fedora XFCE display and input vertical slice. It is not
 > approved for production distribution. Physical tablet, translation, Google Play policy, and
 > third-party licensing gates remain mandatory before release.
 
@@ -16,8 +16,8 @@ with a C++ runtime boundary and a separately executed upstream PRoot binary.
 - Devices: `arm64-v8a` and at least 720dp smallest width
 - Qualified preset: official Fedora XFCE 44 AArch64
 - Distribution: paid Google Play listing with Play Asset Delivery
-- Rendering: capability-based acceleration with an explicit software fallback
-- Audio: playback by default; microphone access is per-session and opt-in
+- Rendering: qualified RFB software path; capability-based acceleration remains planned
+- Audio: playback and permission-gated microphone integration remain disabled
 
 DeskForge-owned code, product integration, design, assets, and documentation are proprietary and
 original. Fedora, PRoot, X.Org, Mesa, and every other third-party component retain their upstream
@@ -55,11 +55,10 @@ secrets only after Play and legal release gates have been approved.
 
 ## Status
 
-DeskForge is under active initial development. The PRoot executable is now a reproducible,
-checksum-pinned runtime component with retained corresponding source. A release remains deliberately
-blocked until post-merge runtime evidence, Android display/audio hosts, final Play asset partitioning,
-and physical-device qualification are complete. The current desktop surface is an integration
-boundary, not a claim that an XFCE frame is rendered in this version.
+DeskForge is under active initial development. The verified PRoot runtime can now launch an
+interactive Fedora XFCE framebuffer through deterministic multi-pack delivery and an app-private
+RFB transport. A release remains deliberately blocked until post-merge runtime evidence,
+accelerated graphics, clipboard and audio integration, and physical-device qualification are complete.
 
 ## License
 

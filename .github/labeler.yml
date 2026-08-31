@@ -6,7 +6,7 @@ area/native:
       - any-glob-to-any-file: ["app/src/main/cpp/**"]
 area/runtime:
   - changed-files:
-      - any-glob-to-any-file: ["config/proot/**", "config/distros/**", "fedora_xfce_44/**"]
+      - any-glob-to-any-file: ["config/proot/**", "config/distros/**", "fedora_xfce_44*/**"]
 area/ci:
   - changed-files:
       - any-glob-to-any-file: [".github/actions/**", ".github/workflows/**", ".github/dependabot.yml", "scripts/**"]

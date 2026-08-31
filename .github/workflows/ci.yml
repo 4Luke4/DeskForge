@@ -49,7 +49,24 @@ jobs:
             (.binary.loader.sha256 | test("^[a-f0-9]{64}$")) and
             (.binary.loader.sizeBytes >= 0)
           ' config/proot/version.json
-          jq -e '.release and .imageUrl and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)' config/distros/fedora-xfce-44.json
+          jq -e '
+            .schemaVersion == 2 and .release and .imageUrl and
+            (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0) and
+            .desktopHost.version and .desktopHost.executable == "/usr/bin/Xvnc" and
+            (.desktopHost.packages | length) > 0 and
+            all(.desktopHost.packages[];
+              .url and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)) and
+            (.desktopHost.source.sha256 | test("^[a-f0-9]{64}$")) and
+            .assetDelivery.packNames == [
+              "fedora_xfce_44", "fedora_xfce_44_1", "fedora_xfce_44_2", "fedora_xfce_44_3"
+            ] and
+            (.assetDelivery.packNames | length) == .assetDelivery.maximumParts and
+            .assetDelivery.partSizeBytes < 1500000000 and
+            .assetDelivery.maximumArchiveSizeBytes == 4000000000
+          ' config/distros/fedora-xfce-44.json
+
+      - name: Test bounded RFB protocol primitives
+        run: bash scripts/test-rfb-protocol.sh
 
       - name: Validate pull request commits
         # Authenticated PR authorship cannot be spoofed through commit metadata.
@@ -106,10 +123,15 @@ jobs:
             buildEnvironment \
             :app:buildEnvironment \
             :fedora_xfce_44:buildEnvironment \
+            :fedora_xfce_44_1:buildEnvironment \
+            :fedora_xfce_44_2:buildEnvironment \
+            :fedora_xfce_44_3:buildEnvironment \
             > build-environment.txt
 
       - name: Run static analysis, tests, and builds
-        run: ./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest assembleDebug bundleRelease
+        run: >-
+          ./gradlew --no-daemon --stacktrace
+          lintDebug testDebugUnitTest assembleDebug assembleDebugAndroidTest bundleRelease
 
       - name: Verify packaged PRoot executable
         run: >-

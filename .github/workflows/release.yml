@@ -7,8 +7,13 @@ on:
         description: Existing annotated release tag (for example v0.1.0)
         required: true
         type: string
+      fedora_asset_run_id:
+        description: Successful Prepare Fedora asset workflow run for the tagged commit
+        required: true
+        type: string
 
 permissions:
+  actions: read
   contents: read
   id-token: write
   attestations: write
@@ -31,6 +36,22 @@ jobs:
           test "$RELEASE_TAG" = "v$(tr -d '\n' < VERSION)"
           git tag --verify "$RELEASE_TAG"
 
+      - name: Restore verified Fedora asset payload
+        env:
+          FEDORA_ASSET_RUN_ID: ${{ inputs.fedora_asset_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${FEDORA_ASSET_RUN_ID}" | \
+            jq --exit-status --arg expected_sha "$(git rev-parse HEAD)" '
+              .head_sha == $expected_sha and
+              .conclusion == "success" and
+              .path == ".github/workflows/fedora-asset.yml"
+            '
+          gh run download "$FEDORA_ASSET_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name fedora-xfce-44-asset \
+            --dir .
+
       - name: Export pinned Android toolchain
         id: toolchain
         uses: ./.github/actions/export-android-toolchain
@@ -52,17 +73,53 @@ jobs:
 
       - name: Verify release prerequisites
         run: |
-          test -f fedora_xfce_44/src/main/assets/rootfs.tar.gz
-          test -f fedora_xfce_44/src/main/assets/rootfs.tar.gz.sha256
+          test -f fedora_xfce_44/src/main/assets/payload-manifest.json
+          jq --exit-status '
+            .schemaVersion == 2 and
+            (.parts | length) > 0 and
+            (.parts | length) <= 4 and
+            .archiveSizeBytes <= 4000000000 and
+            all(.parts | to_entries[];
+              .value.packName == (if .key == 0 then "fedora_xfce_44" else "fedora_xfce_44_\(.key)" end) and
+              .value.fileName == "rootfs.part0\(.key)" and
+              .value.sizeBytes > 0 and .value.sizeBytes < 1500000000 and
+              (.value.sha256 | test("^[a-f0-9]{64}$"))) and
+            (.archiveSha256 | test("^[a-f0-9]{64}$"))
+          ' fedora_xfce_44/src/main/assets/payload-manifest.json
           test -x app/src/main/jniLibs/arm64-v8a/libproot.so
           test -x app/src/main/jniLibs/arm64-v8a/libproot-loader.so
-          (cd fedora_xfce_44/src/main/assets && sha256sum --check rootfs.tar.gz.sha256)
+          actual_archive_size=0
+          while IFS=$'\t' read -r pack file size sha256; do
+            part="$pack/src/main/assets/$file"
+            test -f "$part"
+            test "$(stat --format='%s' "$part")" = "$size"
+            echo "$sha256  $part" | sha256sum --check --strict
+            actual_archive_size=$((actual_archive_size + size))
+          done < <(jq -r '.parts[] | [.packName, .fileName, .sizeBytes, .sha256] | @tsv' \
+            fedora_xfce_44/src/main/assets/payload-manifest.json)
+          test "$actual_archive_size" = \
+            "$(jq -r '.archiveSizeBytes' fedora_xfce_44/src/main/assets/payload-manifest.json)"
+          actual_archive_sha256="$({
+            while IFS=$'\t' read -r pack file; do
+              cat "$pack/src/main/assets/$file"
+            done < <(jq -r '.parts[] | [.packName, .fileName] | @tsv' \
+              fedora_xfce_44/src/main/assets/payload-manifest.json)
+          } | sha256sum | cut --delimiter=' ' --fields=1)"
+          test "$actual_archive_sha256" = \
+            "$(jq -r '.archiveSha256' fedora_xfce_44/src/main/assets/payload-manifest.json)"
           scripts/verify-proot-binary.sh \
             app/src/main/jniLibs/arm64-v8a/libproot.so \
             app/src/main/jniLibs/arm64-v8a/libproot-loader.so
 
       - name: Prepare corresponding source
-        run: scripts/package-proot-source.sh build/deskforge-proot-corresponding-source.tar.gz
+        run: |
+          scripts/package-proot-source.sh build/deskforge-proot-corresponding-source.tar.gz
+          source_size="$(jq -r '.desktopHost.source.sizeBytes' config/distros/fedora-xfce-44.json)"
+          source_sha256="$(jq -r '.desktopHost.source.sha256' config/distros/fedora-xfce-44.json)"
+          source_path=build/fedora-corresponding-source/tigervnc.src.rpm
+          test "$(stat --format='%s' "$source_path")" = "$source_size"
+          echo "$source_sha256  $source_path" | sha256sum --check --strict
+          cp "$source_path" build/tigervnc.src.rpm
 
       - name: Materialize ephemeral signing configuration
         env:
@@ -81,7 +138,8 @@ jobs:
           } > signing.properties
 
       - name: Build signed bundle
-        run: ./gradlew --no-daemon --stacktrace clean bundleRelease
+        # The runner is clean; a Gradle clean here would delete the verified source artifacts above.
+        run: ./gradlew --no-daemon --stacktrace bundleRelease
 
       - name: Attest release bundle
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -89,6 +147,7 @@ jobs:
           subject-path: |
             app/build/outputs/bundle/release/*.aab
             build/deskforge-proot-corresponding-source.tar.gz
+            build/tigervnc.src.rpm
 
       - name: Retain release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -97,5 +156,6 @@ jobs:
           path: |
             app/build/outputs/bundle/release/*.aab
             build/deskforge-proot-corresponding-source.tar.gz
+            build/tigervnc.src.rpm
           if-no-files-found: error
           retention-days: 30
