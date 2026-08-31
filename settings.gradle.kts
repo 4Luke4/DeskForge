@@ -36,8 +36,8 @@ require(securedBuildDependencies.isNotEmpty()) { "Build-tool security manifest m
 
 // AGP exposes vulnerable tooling through both plugin classpaths and ordinary internal configurations.
 // Register before each project is evaluated so later-created configurations inherit the same pins.
-gradle.beforeProject { project ->
-    project.buildscript.configurations.configureEach {
+gradle.beforeProject {
+    buildscript.configurations.configureEach {
         resolutionStrategy.eachDependency {
             val coordinate = "${requested.group}:${requested.name}"
             securedBuildDependencies[coordinate]?.let { approvedVersion ->
@@ -46,7 +46,7 @@ gradle.beforeProject { project ->
             }
         }
     }
-    project.configurations.configureEach {
+    configurations.configureEach {
         resolutionStrategy.eachDependency {
             val coordinate = "${requested.group}:${requested.name}"
             securedBuildDependencies[coordinate]?.let { approvedVersion ->
