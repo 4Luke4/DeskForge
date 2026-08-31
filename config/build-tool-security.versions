@@ -18,3 +18,5 @@ org.bouncycastle:bcpkix-jdk18on=1.84
 org.bouncycastle:bcprov-jdk18on=1.84
 org.bouncycastle:bcutil-jdk18on=1.84
 org.jdom:jdom2=2.0.6.1
+# Keep the declared Compose compiler on its independently verified catalog version.
+org.jetbrains.kotlin:kotlin-gradle-plugin=2.4.20-Beta1

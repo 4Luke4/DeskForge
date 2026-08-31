@@ -23,10 +23,7 @@ rootProject.file("config/build-tool-security.versions").readLines().forEachIndex
     }
 }
 
-val kotlinVersion = libs.versions.kotlin.get()
-val kotlinBuildToolCoordinates = setOf("org.jetbrains.kotlin:kotlin-gradle-plugin")
-val auditedBuildDependencies = securedBuildDependencies +
-    kotlinBuildToolCoordinates.associateWith { kotlinVersion }
+val auditedBuildDependencies = securedBuildDependencies.toMap()
 
 val secureBuildDependencyReports = mutableListOf<Provider<RegularFile>>()
 val secureBuildDependencyVerificationTasks = allprojects.map { auditedProject ->
