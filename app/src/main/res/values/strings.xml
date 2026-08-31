@@ -6,13 +6,17 @@
     <string name="navigation_diagnostics">Diagnostics</string>
     <string name="navigation_settings">Settings</string>
     <string name="welcome_title">Forge a desktop built for your tablet</string>
-    <string name="welcome_body">Run a private Fedora XFCE workspace locally, with tablet, keyboard, mouse, and audio integration.</string>
+    <string name="welcome_body">Run a private Fedora XFCE workspace locally with tablet, keyboard, and mouse integration.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Official AArch64 image · Play-delivered</string>
     <string name="status_ready">Ready to install</string>
     <string name="status_installed">Installed</string>
+    <string name="status_update_required">Workspace update required</string>
     <string name="status_running">Running</string>
+    <string name="status_starting">Starting desktop</string>
+    <string name="status_stopping">Stopping desktop</string>
     <string name="action_install">Install workspace</string>
+    <string name="action_update">Update workspace</string>
     <string name="action_start">Start desktop</string>
     <string name="action_stop">Stop session</string>
     <string name="action_import">Import root filesystem</string>
@@ -20,6 +24,7 @@
     <string name="renderer_software">Software fallback</string>
     <string name="microphone_label">Guest microphone</string>
     <string name="microphone_summary">Off by default. Android asks before a Linux session can capture audio.</string>
+    <string name="microphone_unavailable_summary">Unavailable until the permission-gated audio integration milestone.</string>
     <string name="diagnostics_title">Runtime diagnostics</string>
     <string name="diagnostics_empty">Start a capability check to inspect PRoot, graphics, audio, and input readiness.</string>
     <string name="action_check">Run capability check</string>
@@ -29,4 +34,16 @@
     <string name="status_available">Available</string>
     <string name="status_unavailable">Unavailable</string>
     <string name="diagnostics_version_code">Version code %1$d</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Desktop sessions</string>
+    <string name="session_notification_title">Fedora desktop</string>
+    <string name="session_notification_starting">Starting the local desktop</string>
+    <string name="session_notification_running">Local desktop is running</string>
+    <string name="error_workspace_unavailable">The workspace is unavailable. Install or update Fedora before starting.</string>
+    <string name="error_waiting_for_wifi">Google Play approval is required to continue the download.</string>
+    <string name="error_install_failed">Fedora workspace installation failed. Try again.</string>
+    <string name="error_session_already_running">A managed Linux session is already running.</string>
+    <string name="error_session_start_failed">The Fedora desktop could not start.</string>
+    <string name="error_session_stop_failed">The Fedora desktop could not stop cleanly.</string>
+    <string name="error_display_disconnected">The Fedora desktop connection ended unexpectedly.</string>
 </resources>

@@ -134,7 +134,12 @@ android {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}")
     }
 
-    assetPacks += listOf(":fedora_xfce_44")
+    assetPacks += listOf(
+        ":fedora_xfce_44",
+        ":fedora_xfce_44_1",
+        ":fedora_xfce_44_2",
+        ":fedora_xfce_44_3",
+    )
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -146,6 +151,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     // ActivityResult permission handling requires a non-vulnerable Fragment runtime on the graph.
     implementation(libs.androidx.fragment)
     implementation(libs.play.asset.delivery)

@@ -1,9 +1,12 @@
 package com.deskforge.app.engine
 
 import android.content.Context
+import android.view.Surface
 import com.deskforge.app.BuildConfig
+import com.deskforge.app.model.DesktopViewport
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RuntimeCapabilities
+import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import java.io.File
 
@@ -33,11 +36,8 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         val prootAvailable = nativeProotAvailable && runtimeIsVerified()
         val vulkanAvailable = fields[1].toBooleanStrictOrNull() ?: false
         val audioAvailable = fields[2].toBooleanStrictOrNull() ?: false
-        val rendererMode = if (vulkanAvailable) {
-            RendererMode.Accelerated("Vulkan")
-        } else {
-            RendererMode.Software("Vulkan capability probe failed")
-        }
+        // Vulkan-loader presence is diagnostic only until an accelerated desktop path is qualified.
+        val rendererMode = RendererMode.Software("RFB framebuffer")
         return RuntimeCapabilities(
             prootAvailable = prootAvailable,
             vulkanAvailable = vulkanAvailable,
@@ -47,12 +47,16 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         )
     }
 
-    override fun startSession(rootfsPath: String, microphoneEnabled: Boolean): SessionState {
+    override fun startSession(
+        rootfsPath: String,
+        surface: Surface,
+        viewport: DesktopViewport,
+    ): SessionState {
         if (!runtimeIsVerified()) {
-            return SessionState.Failed("The verified PRoot runtime is unavailable", recoverable = false)
+            return SessionState.Failed(SessionFailure.RUNTIME_UNAVAILABLE, recoverable = false)
         }
         if (nativeActiveProcessId() > 0) {
-            return SessionState.Failed("A managed Linux session is already running", recoverable = true)
+            return SessionState.Failed(SessionFailure.SESSION_ALREADY_RUNNING, recoverable = true)
         }
 
         return try {
@@ -62,31 +66,49 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                 prootLoader.absolutePath,
                 rootfsPath,
                 runtimeDirectory.absolutePath,
-                microphoneEnabled,
+                surface,
+                viewport.widthPx,
+                viewport.heightPx,
+                viewport.densityDpi,
             )
             if (result > 0) {
                 SessionState.Running(result, inspectCapabilities().rendererMode)
             } else {
                 runtimeStorage.cleanup()
-                SessionState.Failed(nativeLastError(), recoverable = true)
+                SessionState.Failed(SessionFailure.SESSION_START_FAILED, recoverable = true)
             }
         } catch (_: IllegalStateException) {
             runtimeStorage.cleanup()
-            SessionState.Failed("The verified PRoot runtime is unavailable", recoverable = false)
+            SessionState.Failed(SessionFailure.RUNTIME_UNAVAILABLE, recoverable = false)
         }
     }
 
     override fun stopSession(): SessionState = try {
         if (nativeStop()) SessionState.Idle
-        else SessionState.Failed(nativeLastError(), recoverable = true)
+        else SessionState.Failed(SessionFailure.SESSION_STOP_FAILED, recoverable = true)
     } finally {
         runtimeStorage.cleanup()
     }
 
+    override fun attachSurface(surface: Surface, viewport: DesktopViewport): Boolean =
+        nativeAttachSurface(surface, viewport.widthPx, viewport.heightPx)
+
+    override fun detachSurface() = nativeDetachSurface()
+
+    override fun resizeDisplay(viewport: DesktopViewport): Boolean =
+        nativeResizeDisplay(viewport.widthPx, viewport.heightPx)
+
+    override fun sendPointer(x: Int, y: Int, buttons: Int): Boolean =
+        nativeSendPointer(x, y, buttons)
+
+    override fun sendKey(keysym: Int, pressed: Boolean): Boolean = nativeSendKey(keysym, pressed)
+
+    override fun isDisplayConnected(): Boolean = nativeDisplayConnected()
+
     /** Restores UI ownership of a native session after an Android configuration change. */
     fun activeSessionState(): SessionState.Running? {
         val processId = nativeActiveProcessId()
-        return if (processId > 0 && runtimeIsVerified()) {
+        return if (processId > 0 && runtimeIsVerified() && nativeDisplayConnected()) {
             SessionState.Running(processId, inspectCapabilities().rendererMode)
         } else {
             null
@@ -115,7 +137,10 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         prootLoaderPath: String,
         rootfsPath: String,
         runtimeDirectoryPath: String,
-        microphoneEnabled: Boolean,
+        surface: Surface,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        densityDpi: Int,
     ): Int
 
     private external fun nativeStop(): Boolean
@@ -123,6 +148,18 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     private external fun nativeActiveProcessId(): Int
 
     private external fun nativeLastError(): String
+
+    private external fun nativeAttachSurface(surface: Surface, width: Int, height: Int): Boolean
+
+    private external fun nativeDetachSurface()
+
+    private external fun nativeResizeDisplay(width: Int, height: Int): Boolean
+
+    private external fun nativeSendPointer(x: Int, y: Int, buttons: Int): Boolean
+
+    private external fun nativeSendKey(keysym: Int, pressed: Boolean): Boolean
+
+    private external fun nativeDisplayConnected(): Boolean
 
     private companion object {
         init {

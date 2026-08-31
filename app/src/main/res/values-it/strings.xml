@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">Diagnostica</string>
     <string name="navigation_settings">Impostazioni</string>
     <string name="welcome_title">Crea un desktop pensato per il tuo tablet</string>
-    <string name="welcome_body">Esegui localmente un ambiente Fedora XFCE privato, integrato con tablet, tastiera, mouse e audio.</string>
+    <string name="welcome_body">Esegui localmente un ambiente Fedora XFCE privato, integrato con tablet, tastiera e mouse.</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">Immagine AArch64 ufficiale · Distribuita da Play</string>
     <string name="status_ready">Pronto per l’installazione</string>
@@ -28,4 +28,21 @@
     <string name="status_available">Disponibile</string>
     <string name="status_unavailable">Non disponibile</string>
     <string name="diagnostics_version_code">Codice versione %1$d</string>
+    <string name="status_update_required">Aggiornamento dell’ambiente necessario</string>
+    <string name="status_starting">Avvio del desktop</string>
+    <string name="status_stopping">Arresto del desktop</string>
+    <string name="action_update">Aggiorna ambiente</string>
+    <string name="microphone_unavailable_summary">Non disponibile fino alla fase di integrazione audio con autorizzazione.</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">Sessioni desktop</string>
+    <string name="session_notification_title">Desktop Fedora</string>
+    <string name="session_notification_starting">Avvio del desktop locale</string>
+    <string name="session_notification_running">Il desktop locale è in esecuzione</string>
+    <string name="error_workspace_unavailable">L’ambiente non è disponibile. Installa o aggiorna Fedora prima dell’avvio.</string>
+    <string name="error_waiting_for_wifi">Per continuare il download è necessaria l’approvazione di Google Play.</string>
+    <string name="error_install_failed">Installazione dell’ambiente Fedora non riuscita. Riprova.</string>
+    <string name="error_session_already_running">È già in esecuzione una sessione Linux gestita.</string>
+    <string name="error_session_start_failed">Impossibile avviare il desktop Fedora.</string>
+    <string name="error_session_stop_failed">Impossibile arrestare correttamente il desktop Fedora.</string>
+    <string name="error_display_disconnected">La connessione al desktop Fedora si è interrotta in modo imprevisto.</string>
 </resources>

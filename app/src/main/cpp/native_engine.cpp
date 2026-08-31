@@ -14,6 +14,9 @@
 #include <mutex>
 #include <string>
 #include <utility>
+#include <memory>
+
+#include "rfb_client.h"
 
 namespace {
 
@@ -21,6 +24,7 @@ constexpr char kLogTag[] = "DeskForgeEngine";
 std::mutex g_session_mutex;
 pid_t g_session_pid = -1;
 std::string g_last_error;
+std::unique_ptr<RfbClient> g_rfb_client;
 
 bool is_regular_executable(const char* path) {
     struct stat file_status {};
@@ -67,6 +71,10 @@ pid_t active_session_pid() {
     const pid_t result = waitpid(g_session_pid, &status, WNOHANG);
     if (result == g_session_pid || (result < 0 && errno == ECHILD)) {
         g_session_pid = -1;
+        if (g_rfb_client != nullptr) {
+            g_rfb_client->stop();
+            g_rfb_client.reset();
+        }
     }
     return g_session_pid;
 }
@@ -100,7 +108,10 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     jstring proot_loader_path_value,
     jstring rootfs_path_value,
     jstring runtime_directory_path_value,
-    jboolean microphone_enabled) {
+    jobject surface,
+    jint viewport_width,
+    jint viewport_height,
+    jint density_dpi) {
     const std::string proot_path = from_jstring(environment, proot_path_value);
     const std::string proot_loader_path = from_jstring(environment, proot_loader_path_value);
     const std::string rootfs_path = from_jstring(environment, rootfs_path_value);
@@ -125,6 +136,12 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     }
     if (!is_directory(runtime_directory_path.c_str())) {
         set_error("The PRoot temporary directory is unavailable");
+        return -1;
+    }
+    if (surface == nullptr || viewport_width < 640 || viewport_width > 4096 ||
+        viewport_height < 480 || viewport_height > 4096 || density_dpi < 120 || density_dpi > 640 ||
+        static_cast<int64_t>(viewport_width) * viewport_height > 16'777'216) {
+        set_error("The desktop viewport is invalid");
         return -1;
     }
 
@@ -153,7 +170,7 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         setenv("HOME", "/root", 1);
         setenv("LANG", "C.UTF-8", 1);
         setenv("DISPLAY", ":0", 1);
-        setenv("PULSE_SERVER", "unix:/run/deskforge/pulse.sock", 1);
+        setenv("XDG_RUNTIME_DIR", "/run/deskforge", 1);
         // Keep executable code in the signed native-lib directory; code cache is scratch only.
         if (setenv("PROOT_LOADER", proot_loader_path.c_str(), 1) != 0 ||
             setenv("PROOT_TMP_DIR", runtime_directory_path.c_str(), 1) != 0) {
@@ -162,7 +179,10 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
             (void)written;
             _exit(125);
         }
-        setenv("DESKFORGE_MICROPHONE", microphone_enabled == JNI_TRUE ? "enabled" : "disabled", 1);
+        const std::string runtime_bind = runtime_directory_path + ":/run/deskforge";
+        const std::string width = std::to_string(viewport_width);
+        const std::string height = std::to_string(viewport_height);
+        const std::string dpi = std::to_string(density_dpi);
         execl(
             proot_path.c_str(),
             proot_path.c_str(),
@@ -174,7 +194,12 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
             "/dev",
             "-b",
             "/proc",
-            "/usr/bin/startxfce4",
+            "-b",
+            runtime_bind.c_str(),
+            "/usr/libexec/deskforge/desktop-session",
+            width.c_str(),
+            height.c_str(),
+            dpi.c_str(),
             static_cast<char*>(nullptr));
         const int launch_error = errno;
         const ssize_t written = write(exec_status_pipe[1], &launch_error, sizeof(launch_error));
@@ -206,6 +231,22 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         return -1;
     }
 
+    const std::string rfb_socket = runtime_directory_path + "/rfb.sock";
+    auto rfb_client = std::make_unique<RfbClient>();
+    if (!rfb_client->connect_and_start(
+            environment, surface, rfb_socket, viewport_width, viewport_height)) {
+        const std::string display_error = rfb_client->last_error();
+        rfb_client->stop();
+        kill(-child, SIGKILL);
+        int status = 0;
+        while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+            // Reap every failed desktop launch before returning control to Kotlin.
+        }
+        set_error(display_error.empty() ? "Unable to connect to the Fedora desktop" : display_error);
+        return -1;
+    }
+
+    g_rfb_client = std::move(rfb_client);
     g_session_pid = child;
     g_last_error.clear();
     return static_cast<jint>(child);
@@ -220,6 +261,10 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStop(JNIEnv*, jobject)
     }
 
     const pid_t process_id = g_session_pid;
+    if (g_rfb_client != nullptr) {
+        g_rfb_client->stop();
+        g_rfb_client.reset();
+    }
     if (kill(-process_id, SIGTERM) != 0 && errno != ESRCH) {
         set_error(std::string("Unable to stop the session: ") + std::strerror(errno));
         return JNI_FALSE;
@@ -248,6 +293,55 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStop(JNIEnv*, jobject)
     g_session_pid = -1;
     g_last_error.clear();
     return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeAttachSurface(
+    JNIEnv* environment,
+    jobject,
+    jobject surface,
+    jint width,
+    jint height) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->attach_surface(environment, surface, width, height)
+        ? JNI_TRUE
+        : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeDetachSurface(JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    if (g_rfb_client != nullptr) g_rfb_client->detach_surface();
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeResizeDisplay(
+    JNIEnv*, jobject, jint width, jint height) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->resize(width, height) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSendPointer(
+    JNIEnv*, jobject, jint x, jint y, jint buttons) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->send_pointer(x, y, buttons) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSendKey(
+    JNIEnv*, jobject, jint keysym, jboolean pressed) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr &&
+        g_rfb_client->send_key(static_cast<uint32_t>(keysym), pressed == JNI_TRUE)
+        ? JNI_TRUE
+        : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeDisplayConnected(JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->connected() ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jint JNICALL

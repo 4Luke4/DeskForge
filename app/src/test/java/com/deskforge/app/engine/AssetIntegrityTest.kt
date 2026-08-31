@@ -29,4 +29,15 @@ class AssetIntegrityTest {
 
         AssetIntegrity.verifySha256(payload, checksum)
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsMismatchedDeclaredSize() {
+        val payload = Files.createTempFile("deskforge-part", ".bin").toFile().apply { writeText("part") }
+
+        AssetIntegrity.verifySha256(
+            payload,
+            "4d0c607d206856aff4b83f957b0d1b7c047f4a9b3e4a940045c12494450d6bf1",
+            expectedSizeBytes = payload.length() + 1,
+        )
+    }
 }

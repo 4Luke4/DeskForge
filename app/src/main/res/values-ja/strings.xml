@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">診断</string>
     <string name="navigation_settings">設定</string>
     <string name="welcome_title">タブレットのためのデスクトップを構築</string>
-    <string name="welcome_body">タブレット、キーボード、マウス、オーディオに対応したプライベートな Fedora XFCE 環境をローカルで実行します。</string>
+    <string name="welcome_body">タブレット、キーボード、マウスに対応したプライベートな Fedora XFCE 環境をローカルで実行します。</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">公式 AArch64 イメージ · Play から配信</string>
     <string name="status_ready">インストール可能</string>
@@ -28,4 +28,21 @@
     <string name="status_available">利用可能</string>
     <string name="status_unavailable">利用不可</string>
     <string name="diagnostics_version_code">バージョンコード %1$d</string>
+    <string name="status_update_required">ワークスペースの更新が必要です</string>
+    <string name="status_starting">デスクトップを起動しています</string>
+    <string name="status_stopping">デスクトップを停止しています</string>
+    <string name="action_update">ワークスペースを更新</string>
+    <string name="microphone_unavailable_summary">権限で保護された音声統合マイルストーンまで利用できません。</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">デスクトップ セッション</string>
+    <string name="session_notification_title">Fedora デスクトップ</string>
+    <string name="session_notification_starting">ローカル デスクトップを起動しています</string>
+    <string name="session_notification_running">ローカル デスクトップを実行中です</string>
+    <string name="error_workspace_unavailable">ワークスペースを利用できません。開始する前に Fedora をインストールまたは更新してください。</string>
+    <string name="error_waiting_for_wifi">ダウンロードを続行するには Google Play の承認が必要です。</string>
+    <string name="error_install_failed">Fedora ワークスペースのインストールに失敗しました。もう一度お試しください。</string>
+    <string name="error_session_already_running">管理対象の Linux セッションはすでに実行中です。</string>
+    <string name="error_session_start_failed">Fedora デスクトップを開始できませんでした。</string>
+    <string name="error_session_stop_failed">Fedora デスクトップを正常に停止できませんでした。</string>
+    <string name="error_display_disconnected">Fedora デスクトップへの接続が予期せず終了しました。</string>
 </resources>

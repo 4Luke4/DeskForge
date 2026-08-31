@@ -33,6 +33,31 @@ data class RuntimeCapabilities(
     val detail: String,
 )
 
+/** Pixel geometry supplied to both Xvnc and the Android native window. */
+data class DesktopViewport(
+    val widthPx: Int,
+    val heightPx: Int,
+    val densityDpi: Int,
+) {
+    init {
+        require(widthPx in 640..4096 && heightPx in 480..4096)
+        require(widthPx.toLong() * heightPx <= 16_777_216L)
+        require(densityDpi in 120..640)
+    }
+}
+
+/** Stable user-facing failure categories; implementation details remain in native or workflow logs. */
+enum class SessionFailure {
+    WORKSPACE_UNAVAILABLE,
+    WAITING_FOR_WIFI,
+    INSTALL_FAILED,
+    RUNTIME_UNAVAILABLE,
+    SESSION_ALREADY_RUNNING,
+    SESSION_START_FAILED,
+    SESSION_STOP_FAILED,
+    DISPLAY_DISCONNECTED,
+}
+
 /** Single authoritative lifecycle for a managed Linux session. */
 sealed interface SessionState {
     data object Idle : SessionState
@@ -40,5 +65,5 @@ sealed interface SessionState {
     data object Starting : SessionState
     data class Running(val processId: Int, val rendererMode: RendererMode) : SessionState
     data object Stopping : SessionState
-    data class Failed(val message: String, val recoverable: Boolean) : SessionState
+    data class Failed(val reason: SessionFailure, val recoverable: Boolean) : SessionState
 }

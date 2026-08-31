@@ -5,7 +5,7 @@
     <string name="navigation_diagnostics">诊断</string>
     <string name="navigation_settings">设置</string>
     <string name="welcome_title">打造专为平板电脑设计的桌面</string>
-    <string name="welcome_body">在本地运行私密的 Fedora XFCE 工作空间，并集成平板、键盘、鼠标和音频。</string>
+    <string name="welcome_body">在本地运行私密的 Fedora XFCE 工作空间，并集成平板、键盘和鼠标。</string>
     <string name="fedora_title">Fedora XFCE 44</string>
     <string name="fedora_subtitle">官方 AArch64 映像 · 通过 Play 分发</string>
     <string name="status_ready">可以安装</string>
@@ -28,4 +28,21 @@
     <string name="status_available">可用</string>
     <string name="status_unavailable">不可用</string>
     <string name="diagnostics_version_code">版本代码 %1$d</string>
+    <string name="status_update_required">需要更新工作区</string>
+    <string name="status_starting">正在启动桌面</string>
+    <string name="status_stopping">正在停止桌面</string>
+    <string name="action_update">更新工作区</string>
+    <string name="microphone_unavailable_summary">在完成受权限保护的音频集成里程碑之前不可用。</string>
+    <string name="session_pid">PID %1$d</string>
+    <string name="session_notification_channel">桌面会话</string>
+    <string name="session_notification_title">Fedora 桌面</string>
+    <string name="session_notification_starting">正在启动本地桌面</string>
+    <string name="session_notification_running">本地桌面正在运行</string>
+    <string name="error_workspace_unavailable">工作区不可用。请先安装或更新 Fedora，然后再启动。</string>
+    <string name="error_waiting_for_wifi">需要获得 Google Play 批准才能继续下载。</string>
+    <string name="error_install_failed">Fedora 工作区安装失败。请重试。</string>
+    <string name="error_session_already_running">已有一个受管理的 Linux 会话正在运行。</string>
+    <string name="error_session_start_failed">无法启动 Fedora 桌面。</string>
+    <string name="error_session_stop_failed">无法正常停止 Fedora 桌面。</string>
+    <string name="error_display_disconnected">Fedora 桌面连接意外中断。</string>
 </resources>
