@@ -1,9 +1,11 @@
 package com.deskforge.app
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
@@ -210,32 +212,40 @@ class DeskForgeSessionService : Service() {
             .notify(NOTIFICATION_ID, buildNotification(running))
     }
 
-    private fun buildNotification(running: Boolean) = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_launcher_foreground)
-        .setContentTitle(getString(R.string.session_notification_title))
-        .setContentText(getString(if (running) R.string.session_notification_running else R.string.session_notification_starting))
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this,
+    private fun buildNotification(running: Boolean): Notification {
+        // Notification PendingIntents cross process boundaries; fix their targets and mutability.
+        val contentIntent = Intent().setComponent(ComponentName(this, MainActivity::class.java))
+        val stopIntent = Intent()
+            .setComponent(ComponentName(this, DeskForgeSessionService::class.java))
+            .setAction(ACTION_STOP)
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(getString(R.string.session_notification_title))
+            .setContentText(getString(if (running) R.string.session_notification_running else R.string.session_notification_starting))
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    contentIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+            .addAction(
                 0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
-        .addAction(
-            0,
-            getString(R.string.action_stop),
-            PendingIntent.getService(
-                this,
-                1,
-                Intent(this, DeskForgeSessionService::class.java).setAction(ACTION_STOP),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setCategory(NotificationCompat.CATEGORY_SERVICE)
-        .build()
+                getString(R.string.action_stop),
+                PendingIntent.getService(
+                    this,
+                    1,
+                    stopIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
+    }
 
     private fun createNotificationChannel() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(
