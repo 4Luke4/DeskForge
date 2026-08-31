@@ -140,7 +140,7 @@ Checking for working strptime: OK
 Checking for HAVE_SHARED_MMAP: OK
 Checking for HAVE_MREMAP: OK
 Checking for HAVE_INCOHERENT_MMAP: OK
-getconf large file support flags work: OK
+Checking getconf large file support flags work: OK
 EOF
 
 (
