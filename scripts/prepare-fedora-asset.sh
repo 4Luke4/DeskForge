@@ -35,23 +35,13 @@ rpmkeys --dbpath "${working_directory}/rpmdb" --import "${working_directory}/fed
 curl --fail --location --retry 3 "${image_url}" --output "${working_directory}/${image_name}"
 echo "${expected_sha256}  ${working_directory}/${image_name}" | sha256sum --check --strict
 
-# Fedora retains the historical file name for both legacy SquashFS and current EROFS media.
+# Fedora 44 retains the historical squashfs.img name for its EROFS live filesystem.
 xorriso -osirrox on -indev "${working_directory}/${image_name}" \
   -extract /LiveOS/squashfs.img "${working_directory}/squashfs.img"
-root_image="${working_directory}/squashfs.img"
-if unsquashfs -stat "${root_image}" >/dev/null 2>&1; then
-  unsquashfs -no-progress -d "${working_directory}/squashfs" "${root_image}"
-  root_image="$(find "${working_directory}/squashfs" -type f -name rootfs.img -print -quit)"
-  if [[ -z "${root_image}" ]]; then
-    echo "Fedora SquashFS image does not contain LiveOS/rootfs.img" >&2
-    exit 1
-  fi
-fi
-
-# guestfish reads ext and EROFS filesystems without root privileges and retains Linux metadata.
-guestfish --ro -a "${root_image}" -m /dev/sda tar-out / "${uncompressed_archive}"
-tar --list --file "${uncompressed_archive}" | grep --extended-regexp --quiet '(^|/)usr/bin/startxfce4$'
-tar --extract --file "${uncompressed_archive}" --directory "${rootfs_directory}"
+# fsck.erofs validates every inode and compressed extent while extracting the signed, pinned image.
+sudo fsck.erofs --extract="${rootfs_directory}" "${working_directory}/squashfs.img"
+sudo chown --recursive --no-dereference "$(id -u):$(id -g)" "${rootfs_directory}"
+test -x "${rootfs_directory}/usr/bin/startxfce4"
 
 # Overlay only immutable Fedora packages. Dependencies must already be present in the signed spin;
 # missing runtime libraries are detected below rather than resolved from mutable repository state.

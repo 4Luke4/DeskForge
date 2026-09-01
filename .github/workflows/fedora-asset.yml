@@ -18,7 +18,7 @@ jobs:
       - name: Install image extraction tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes binutils cpio guestfish rpm2cpio rpm squashfs-tools xorriso
+          sudo apt-get install --yes binutils cpio erofs-utils rpm2cpio rpm xorriso
 
       - name: Prepare verified root filesystem
         run: scripts/prepare-fedora-asset.sh
