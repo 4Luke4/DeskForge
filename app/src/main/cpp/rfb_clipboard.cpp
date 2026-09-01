@@ -25,6 +25,9 @@ void append_u32(std::vector<uint8_t>& output, uint32_t value) {
 }
 
 std::optional<ExtendedAction> decode_action(uint32_t flags) {
+    constexpr uint32_t known_flags = 0xffffU | kActionCaps | kActionRequest |
+        kActionPeek | kActionNotify | kActionProvide;
+    if ((flags & ~known_flags) != 0) return std::nullopt;
     if ((flags & kActionCaps) != 0) return ExtendedAction::Caps;
     switch (flags & kActionMask) {
         case kActionRequest: return ExtendedAction::Request;
