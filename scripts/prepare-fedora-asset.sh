@@ -152,7 +152,8 @@ for index in "${!required_audio_packages[@]}"; do
   package_name="${required_audio_packages[$index]}"
   guest_executable="${required_audio_executables[$index]}"
   printf 'Resolving %s from %s.\n' "${package_name}" "${guest_executable}"
-  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" --query --file \
+  # Query the recorded file capability instead of host-stat based --file selection under --root.
+  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" --query --whatprovides \
     --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${guest_executable}")"; then
     printf 'The signed Fedora package database does not own %s.\n' "${guest_executable}" >&2
     exit 1
