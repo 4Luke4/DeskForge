@@ -10,7 +10,9 @@
 5. PRoot starts the pinned Fedora TigerVNC host and XFCE inside the selected root filesystem.
 6. Xvnc exposes RFB only through a mode-0600 socket bound from the unique app-private runtime directory.
 7. The original native RFB client validates and renders framebuffer updates and forwards bounded input.
-8. Native lifecycle results are converted into `SessionState`; only a positive supervised PID with a
+8. Android IME commits are converted into bounded Unicode keysyms; clipboard text crosses the RFB
+   boundary only after the corresponding explicit Android action.
+9. Native lifecycle results are converted into `SessionState`; only a positive supervised PID with a
    negotiated display connection is represented as `Running`.
 
 ## Ownership boundaries
@@ -29,4 +31,5 @@ Partial installations remain in uniquely named staging directories and are remov
 process groups are terminated together.
 Unsupported GPUs select the software renderer with a diagnostic reason; they do not silently claim
 hardware acceleration.
-The current qualified renderer is always the RFB software path. Clipboard and audio remain disabled.
+The current qualified renderer is always the RFB software path. Clipboard exchange is manual,
+plain-text-only, and bounded to 1 MiB; automatic synchronization and audio remain disabled.

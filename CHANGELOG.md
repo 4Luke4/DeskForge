@@ -13,6 +13,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.4.0] - 2026-09-01
+
+### Added
+
+- Explicit Android software-keyboard input with bounded Unicode RFB key forwarding.
+- Manual plain-text clipboard transfers from Android to Linux and from Linux to Android.
+- Extended RFB clipboard capability negotiation with bounded UTF-8 and compressed payload validation.
+
+### Changed
+
+- TigerVNC exposes only its clipboard selection; X11 primary-selection mirroring remains disabled.
+- Guest clipboard text reaches Android only after a user-requested transfer and is marked sensitive.
+
+### Known limitations
+
+- Audio playback and capture and accelerated rendering remain release blockers.
+- Protected-main emulator and physical ARM64 tablet qualification remain required before production distribution.
+
 ## [0.3.0] - 2026-08-31
 
 ### Added
@@ -70,7 +88,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/4Luke4/DeskForge/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/4Luke4/DeskForge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/4Luke4/DeskForge/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/4Luke4/DeskForge/releases/tag/v0.1.0

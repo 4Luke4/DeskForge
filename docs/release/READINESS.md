@@ -1,6 +1,6 @@
 # Release Readiness
 
-DeskForge 0.3.0 is a development milestone. Merging interactive desktop integration does not authorize a
+DeskForge 0.4.0 is a development milestone. Merging text-input and clipboard integration does not authorize a
 production build or Google Play publication. Every production gate below requires retained evidence
 and an explicit maintainer decision.
 
@@ -10,7 +10,7 @@ and an explicit maintainer decision.
 | Emulator verification | Manually dispatched API 34/latest-stable ARM64 emulator jobs pass on protected `main` | No | Yes |
 | Runtime packaging | Two byte-identical API 34 ARM64 builds; ELF/APK/AAB digest checks; corresponding PRoot/talloc source and notices; protected-main emulator smoke evidence | No | Yes |
 | Fedora delivery | Signed-image/RPM verification and every generated Play asset pack below its enforced limit | No | Yes |
-| Desktop integration | XFCE frame, keyboard, mouse, and touch evidence; clipboard, playback, and permission-gated microphone evidence | No | Yes |
+| Desktop integration | XFCE frame, touch, mouse, physical/software keyboard, manual clipboard, playback, and permission-gated microphone evidence | No | Yes |
 | Physical qualification | Completed device matrix covering graphics, audio, input, thermals, lifecycle, and long sessions | No | Yes |
 | Localization | Native-speaker approval recorded for every non-English resource set | No | Yes |
 | Legal and Play policy | Copyleft offer, trademark review, privacy disclosure, paid-listing review, and Data safety answers | No | Yes |
