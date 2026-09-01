@@ -178,7 +178,7 @@ jq -r '.[]' <<<"${audio_packages_json}" > "${source_output}/fedora-audio-package
 printf 'Recorded %s Fedora audio package identities.\n' \
   "$(jq 'length' <<<"${audio_packages_json}")"
 while read -r library; do
-  find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
+  sudo find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
     -name "${library}" -print -quit | grep --quiet .
 done < <(readelf --dynamic "${rootfs_directory}/usr/bin/Xvnc" | \
   sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')
