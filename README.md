@@ -5,7 +5,7 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.3.0 adds the interactive Fedora XFCE display and input vertical slice. It is not
+> Version 0.4.0 completes tablet text input and explicit plain-text clipboard transfers. It is not
 > approved for production distribution. Physical tablet, translation, Google Play policy, and
 > third-party licensing gates remain mandatory before release.
 
@@ -17,6 +17,8 @@ with a C++ runtime boundary and a separately executed upstream PRoot binary.
 - Qualified preset: official Fedora XFCE 44 AArch64
 - Distribution: paid Google Play listing with Play Asset Delivery
 - Rendering: qualified RFB software path; capability-based acceleration remains planned
+- Input: touch, mouse, physical keyboard, and explicitly invoked Android software keyboard
+- Clipboard: manual plain-text transfer in either direction; automatic synchronization is disabled
 - Audio: playback and permission-gated microphone integration remain disabled
 
 DeskForge-owned code, product integration, design, assets, and documentation are proprietary and
@@ -58,7 +60,7 @@ secrets only after Play and legal release gates have been approved.
 DeskForge is under active initial development. The verified PRoot runtime can now launch an
 interactive Fedora XFCE framebuffer through deterministic multi-pack delivery and an app-private
 RFB transport. A release remains deliberately blocked until post-merge runtime evidence,
-accelerated graphics, clipboard and audio integration, and physical-device qualification are complete.
+accelerated graphics, audio integration, and physical-device qualification are complete.
 
 ## License
 

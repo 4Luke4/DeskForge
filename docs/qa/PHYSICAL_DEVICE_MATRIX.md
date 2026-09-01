@@ -10,7 +10,8 @@ evidence links; do not store device serial numbers or user data in the repositor
 | --- | --- | --- |
 | Installation | Fresh install, interrupted download, insufficient space, retry, application update | Screen recording and sanitized diagnostics |
 | Graphics | Accelerated probe, software fallback, resize, rotation, suspend/resume | Renderer identity, screenshots, 30-minute trace |
-| Input | Touch, stylus where supported, hardware keyboard, shortcuts, mouse buttons, wheel | Completed interaction checklist |
+| Input | Touch, stylus where supported, hardware/software keyboard, composition, shortcuts, mouse buttons, wheel | Completed interaction checklist |
+| Clipboard | Manual transfer in both directions, denial, rich-content rejection, size limit, rotation | Sanitized state log without clipboard contents |
 | Audio | Playback route changes; microphone denial, one-time grant, grant, and revocation | Sanitized audio route log and consent recording |
 | Lifecycle | Background/foreground, screen lock, process recreation, graceful and forced stop | PID/process-group and UI-state evidence |
 | Reliability | Two-hour interactive session, thermal load, low-memory recovery | Crash-free logcat, thermal and memory summary |

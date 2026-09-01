@@ -3,6 +3,7 @@
 ## Protected assets
 
 - Android application-private data and user-approved shared documents
+- User-approved Android and Linux clipboard text
 - Microphone consent and captured audio
 - Fedora and PRoot supply-chain integrity
 - Session isolation, diagnostics, and signing credentials
@@ -20,7 +21,9 @@ approved documents, uses private Unix sockets, and exports no Android service or
   transactional activation.
 - **Supply-chain replacement:** immutable source and executable SHA-256 manifests, reproducible
   PRoot builds, packaged-byte comparison, Fedora OpenPGP verification, pinned Actions, dependency
-  review, SBOM generation, corresponding source, and provenance.
+  review, SBOM generation, corresponding source, and provenance. Fedora images are mounted during
+  asset preparation only after signature and exact-digest verification, as a read-only, no-execute
+  lower layer; signed RPM changes are confined to an ephemeral writable overlay.
 - **Runtime replacement or loader persistence:** the installed PRoot ELF and loader are independently
   size- and digest-checked before inspection and every launch. Both execute only from Android's
   read-only native-library directory; app-private scratch storage is cleaned on launch failure, stop,
@@ -33,12 +36,16 @@ approved documents, uses private Unix sockets, and exports no Android service or
   Device/driver self-tests remain a production release gate.
 - **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
   allocations and text, validates rectangle arithmetic and negotiated security, and terminates the
-  session on malformed or unsupported protocol input. Clipboard messages are disabled and discarded.
+  session on malformed or unsupported protocol input.
+- **Clipboard exfiltration or injection:** extended RFB clipboard exchange advertises zero unsolicited
+  text capacity. Android and guest text cross the boundary only after separate visible actions, accept
+  one plain UTF-8 item up to 1 MiB, and reject rich or provider-backed content. DeskForge clears its
+  transfer buffers after use; guest text is marked sensitive when written to Android's clipboard.
 - **Sensitive diagnostics:** structured messages without user document contents, environment
   secrets, or signing data.
 
 ## Release validation
 
-The production threat model must be revisited after accelerated display, clipboard, audio, and the
+The production threat model must be revisited after accelerated display, audio, and the
 physical-device matrix are complete. Google Play executable-code treatment and every copyleft distribution
 obligation require explicit review before publication.

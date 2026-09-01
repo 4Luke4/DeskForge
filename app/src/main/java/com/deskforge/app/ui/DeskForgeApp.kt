@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -44,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +55,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.R
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.ClipboardFailure
+import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
@@ -61,6 +67,7 @@ private enum class Destination { WORKSPACES, DIAGNOSTICS, SETTINGS }
 fun DeskForgeApp(
     sessionState: SessionState,
     capabilities: RuntimeCapabilities?,
+    clipboardState: SessionClipboardState,
     isInstalled: Boolean,
     requiresUpdate: Boolean,
     desktopCallbacks: DesktopSurfaceCallbacks,
@@ -68,9 +75,20 @@ fun DeskForgeApp(
     onCapabilityCheck: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onShowKeyboard: () -> Unit,
+    onPasteToDesktop: () -> Unit,
+    onCopyFromDesktop: () -> Unit,
 ) {
     if (sessionState is SessionState.Starting || sessionState is SessionState.Running || sessionState is SessionState.Stopping) {
-        DesktopSessionScreen(sessionState, onStop, desktopCallbacks)
+        DesktopSessionScreen(
+            sessionState,
+            clipboardState,
+            onStop,
+            onShowKeyboard,
+            onPasteToDesktop,
+            onCopyFromDesktop,
+            desktopCallbacks,
+        )
         return
     }
 
@@ -268,10 +286,15 @@ private fun SettingsScreen() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DesktopSessionScreen(
     state: SessionState,
+    clipboardState: SessionClipboardState,
     onStop: () -> Unit,
+    onShowKeyboard: () -> Unit,
+    onPasteToDesktop: () -> Unit,
+    onCopyFromDesktop: () -> Unit,
     callbacks: DesktopSurfaceCallbacks,
 ) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -301,12 +324,80 @@ private fun DesktopSessionScreen(
             }
             OutlinedButton(onClick = onStop) { Text(stringResource(R.string.action_stop)) }
         }
+        if (state is SessionState.Running) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                OutlinedButton(onClick = onShowKeyboard) {
+                    Text(stringResource(R.string.action_show_keyboard))
+                }
+                OutlinedButton(
+                    onClick = onPasteToDesktop,
+                    enabled = clipboardCanStartTransfer(clipboardState),
+                ) {
+                    Text(stringResource(R.string.action_paste_to_desktop))
+                }
+                OutlinedButton(
+                    onClick = onCopyFromDesktop,
+                    enabled = clipboardCanCopyFromDesktop(clipboardState),
+                ) {
+                    Text(stringResource(R.string.action_copy_from_desktop))
+                }
+                Text(
+                    clipboardStatusLabel(clipboardState),
+                    modifier = Modifier.align(Alignment.CenterVertically).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    color = if (clipboardState is SessionClipboardState.Failed) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
         AndroidView(
             factory = { context -> DesktopSurface(context, callbacks) },
             update = { surface -> surface.callbacks = callbacks },
             modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(12.dp)),
         )
     }
+}
+
+private fun clipboardCanStartTransfer(state: SessionClipboardState): Boolean =
+    state is SessionClipboardState.Idle || state is SessionClipboardState.Failed
+
+private fun clipboardCanCopyFromDesktop(state: SessionClipboardState): Boolean = when (state) {
+    is SessionClipboardState.Idle -> state.remoteTextAvailable
+    is SessionClipboardState.Failed -> state.remoteTextAvailable
+    else -> false
+}
+
+@Composable
+private fun clipboardStatusLabel(state: SessionClipboardState): String = stringResource(
+    when (state) {
+        SessionClipboardState.Unavailable -> R.string.clipboard_unavailable
+        is SessionClipboardState.Idle -> if (state.remoteTextAvailable) {
+            R.string.clipboard_remote_available
+        } else {
+            R.string.clipboard_ready
+        }
+        SessionClipboardState.Sending -> R.string.clipboard_sending
+        SessionClipboardState.Receiving -> R.string.clipboard_receiving
+        is SessionClipboardState.Ready -> R.string.clipboard_receiving
+        is SessionClipboardState.Failed -> clipboardFailureResource(state.reason)
+    },
+)
+
+private fun clipboardFailureResource(reason: ClipboardFailure): Int = when (reason) {
+    ClipboardFailure.NO_PLAIN_TEXT -> R.string.clipboard_error_plain_text
+    ClipboardFailure.TEXT_TOO_LARGE -> R.string.clipboard_error_too_large
+    ClipboardFailure.INVALID_TEXT -> R.string.clipboard_error_invalid_text
+    ClipboardFailure.TRANSFER_TIMEOUT -> R.string.clipboard_error_timeout
+    ClipboardFailure.TRANSFER_FAILED -> R.string.clipboard_error_transfer
+    ClipboardFailure.ANDROID_CLIPBOARD_FAILED -> R.string.clipboard_error_android
 }
 
 @Composable

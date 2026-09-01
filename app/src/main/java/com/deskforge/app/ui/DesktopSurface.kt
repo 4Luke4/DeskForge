@@ -9,16 +9,25 @@ import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.inputmethod.BaseInputConnection
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
+import android.text.InputType
+import android.text.SpannableStringBuilder
 import com.deskforge.app.R
+import com.deskforge.app.engine.RfbTextEncoder
 import com.deskforge.app.model.DesktopViewport
 import kotlin.math.roundToInt
 
 data class DesktopSurfaceCallbacks(
+    val onSurfaceViewReady: (DesktopSurface) -> Unit,
     val onSurfaceReady: (Surface, DesktopViewport) -> Unit,
     val onSurfaceResized: (DesktopViewport) -> Unit,
     val onSurfaceDestroyed: () -> Unit,
     val onPointer: (x: Int, y: Int, buttons: Int) -> Unit,
     val onKey: (keysym: Int, pressed: Boolean) -> Unit,
+    val onText: (text: String) -> Unit,
 )
 
 /** Focused Android boundary that converts tablet and physical input into bounded RFB events. */
@@ -32,6 +41,7 @@ class DesktopSurface(
     private var verticalScrollRemainder = 0f
     private var horizontalScrollRemainder = 0f
     private val gestureDetector = GestureDetector(context, DesktopGestureListener())
+    private var inputConnection: RemoteInputConnection? = null
 
     init {
         isFocusable = true
@@ -39,6 +49,7 @@ class DesktopSurface(
         setBackgroundColor(Color.rgb(18, 22, 27))
         contentDescription = context.getString(R.string.desktop_preview)
         holder.addCallback(this)
+        callbacks.onSurfaceViewReady(this)
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -53,6 +64,7 @@ class DesktopSurface(
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        closeSoftwareKeyboard()
         releaseInput()
         callbacks.onSurfaceDestroyed()
     }
@@ -109,6 +121,31 @@ class DesktopSurface(
         callbacks.onKey(keysym, false)
         heldKeysyms -= keysym
         return true
+    }
+
+    override fun onCheckIsTextEditor(): Boolean = true
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
+        outAttrs.inputType = InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        outAttrs.imeOptions = EditorInfo.IME_ACTION_NONE or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        outAttrs.initialSelStart = 0
+        outAttrs.initialSelEnd = 0
+        return RemoteInputConnection().also { inputConnection = it }
+    }
+
+    fun showSoftwareKeyboard() {
+        requestFocus()
+        val manager = context.getSystemService(InputMethodManager::class.java)
+        manager.restartInput(this)
+        manager.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    fun closeSoftwareKeyboard() {
+        inputConnection?.discard()
+        inputConnection = null
+        context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(windowToken, 0)
     }
 
     override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
@@ -203,6 +240,75 @@ class DesktopSurface(
         }
     }
 
+    private inner class RemoteInputConnection : BaseInputConnection(this@DesktopSurface, true) {
+        private val editableText = SpannableStringBuilder()
+
+        override fun getEditable() = editableText
+
+        override fun setComposingText(text: CharSequence, newCursorPosition: Int): Boolean {
+            if (RfbTextEncoder.encode(text) == null) return false
+            return super.setComposingText(text, newCursorPosition)
+        }
+
+        override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean {
+            if (RfbTextEncoder.encode(text) == null) return false
+            callbacks.onText(text.toString())
+            editableText.clear()
+            return true
+        }
+
+        override fun finishComposingText(): Boolean {
+            val committed = editableText.toString()
+            if (committed.isNotEmpty()) {
+                if (RfbTextEncoder.encode(committed) == null) return false
+                callbacks.onText(committed)
+            }
+            editableText.clear()
+            return super.finishComposingText()
+        }
+
+        override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+            if (beforeLength < 0 || afterLength < 0 || beforeLength + afterLength > MAX_IME_DELETIONS) {
+                return false
+            }
+            if (editableText.isNotEmpty()) return super.deleteSurroundingText(beforeLength, afterLength)
+            repeat(beforeLength) {
+                callbacks.onKey(XK_BACKSPACE, true)
+                callbacks.onKey(XK_BACKSPACE, false)
+            }
+            repeat(afterLength) {
+                callbacks.onKey(XK_DELETE, true)
+                callbacks.onKey(XK_DELETE, false)
+            }
+            return true
+        }
+
+        override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean =
+            deleteSurroundingText(beforeLength, afterLength)
+
+        override fun performEditorAction(actionCode: Int): Boolean {
+            callbacks.onKey(XK_RETURN, true)
+            callbacks.onKey(XK_RETURN, false)
+            return true
+        }
+
+        override fun sendKeyEvent(event: KeyEvent): Boolean {
+            if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) return false
+            val keysym = AndroidKeysym.from(event) ?: return false
+            callbacks.onKey(keysym, event.action == KeyEvent.ACTION_DOWN)
+            return true
+        }
+
+        override fun closeConnection() {
+            discard()
+            super.closeConnection()
+        }
+
+        fun discard() {
+            editableText.clear()
+        }
+    }
+
     private fun Float.toDesktopX() = roundToInt().coerceIn(0, (width - 1).coerceAtLeast(0))
     private fun Float.toDesktopY() = roundToInt().coerceIn(0, (height - 1).coerceAtLeast(0))
 
@@ -228,6 +334,10 @@ class DesktopSurface(
         const val RFB_SCROLL_LEFT = 32
         const val RFB_SCROLL_RIGHT = 64
         const val RFB_BACK = 128
+        const val XK_BACKSPACE = 0xff08
+        const val XK_RETURN = 0xff0d
+        const val XK_DELETE = 0xffff
+        const val MAX_IME_DELETIONS = 1_024
     }
 }
 

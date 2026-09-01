@@ -10,13 +10,17 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <array>
 #include <cstring>
 #include <mutex>
 #include <string>
 #include <utility>
 #include <memory>
+#include <optional>
+#include <vector>
 
 #include "rfb_client.h"
+#include "rfb_clipboard.h"
 
 namespace {
 
@@ -336,6 +340,90 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSendKey(
         g_rfb_client->send_key(static_cast<uint32_t>(keysym), pressed == JNI_TRUE)
         ? JNI_TRUE
         : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSendText(
+    JNIEnv* environment, jobject, jintArray keysyms_value) {
+    if (keysyms_value == nullptr) return JNI_FALSE;
+    const jsize count = environment->GetArrayLength(keysyms_value);
+    if (count < 0 || count > 4096) return JNI_FALSE;
+    std::vector<jint> java_keysyms(static_cast<size_t>(count));
+    if (count > 0) {
+        environment->GetIntArrayRegion(keysyms_value, 0, count, java_keysyms.data());
+        if (environment->ExceptionCheck() == JNI_TRUE) return JNI_FALSE;
+    }
+    std::vector<uint32_t> keysyms;
+    keysyms.reserve(static_cast<size_t>(count));
+    for (const jint keysym : java_keysyms) keysyms.push_back(static_cast<uint32_t>(keysym));
+
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->send_text(keysyms) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeClipboardSnapshot(
+    JNIEnv* environment, jobject) {
+    RfbClipboardSnapshot snapshot{
+        RfbClipboardStatus::Unsupported,
+        false,
+        RfbClipboardFailure::None,
+    };
+    {
+        std::lock_guard<std::mutex> lock(g_session_mutex);
+        if (g_rfb_client != nullptr) snapshot = g_rfb_client->clipboard_snapshot();
+    }
+    const std::array<jint, 3> values{
+        static_cast<jint>(snapshot.status),
+        snapshot.remote_text_available ? 1 : 0,
+        static_cast<jint>(snapshot.failure),
+    };
+    jintArray result = environment->NewIntArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        environment->SetIntArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeOfferClipboardText(
+    JNIEnv* environment, jobject, jbyteArray text_value) {
+    if (text_value == nullptr) return JNI_FALSE;
+    const jsize size = environment->GetArrayLength(text_value);
+    if (size < 0 || static_cast<size_t>(size) > rfb_clipboard::kMaximumTextBytes) return JNI_FALSE;
+    std::vector<uint8_t> text(static_cast<size_t>(size));
+    if (size > 0) {
+        environment->GetByteArrayRegion(
+            text_value, 0, size, reinterpret_cast<jbyte*>(text.data()));
+        if (environment->ExceptionCheck() == JNI_TRUE) return JNI_FALSE;
+    }
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->offer_clipboard_text(text) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeRequestClipboardText(
+    JNIEnv*, jobject) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_rfb_client != nullptr && g_rfb_client->request_clipboard_text() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeTakeClipboardText(
+    JNIEnv* environment, jobject) {
+    std::optional<std::vector<uint8_t>> text;
+    {
+        std::lock_guard<std::mutex> lock(g_session_mutex);
+        if (g_rfb_client != nullptr) text = g_rfb_client->take_clipboard_text();
+    }
+    if (!text.has_value()) return nullptr;
+    jbyteArray result = environment->NewByteArray(static_cast<jsize>(text->size()));
+    if (result != nullptr && !text->empty()) {
+        environment->SetByteArrayRegion(
+            result, 0, static_cast<jsize>(text->size()),
+            reinterpret_cast<const jbyte*>(text->data()));
+    }
+    return result;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL

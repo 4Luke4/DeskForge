@@ -1,4 +1,5 @@
 #include "rfb_client.h"
+#include "rfb_clipboard.h"
 #include "rfb_protocol.h"
 
 #include <android/native_window_jni.h>
@@ -12,16 +13,17 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <limits>
 
 namespace {
 
 constexpr size_t kPixelBytes = 4;
-constexpr uint32_t kMaximumTextBytes = 1024 * 1024;
 constexpr int kSocketWaitAttempts = 300;
 constexpr int32_t kEncodingRaw = 0;
 constexpr int32_t kEncodingCopyRect = 1;
 constexpr int32_t kEncodingDesktopSize = -223;
 constexpr int32_t kEncodingExtendedDesktopSize = -308;
+constexpr auto kClipboardTimeout = std::chrono::seconds(5);
 
 uint16_t read_u16(const uint8_t* value) {
     return static_cast<uint16_t>((static_cast<uint16_t>(value[0]) << 8U) | value[1]);
@@ -168,7 +170,7 @@ bool RfbClient::negotiate() {
     const uint16_t width = read_u16(server_init.data());
     const uint16_t height = read_u16(server_init.data() + 2);
     const uint32_t name_length = read_u32(server_init.data() + 20);
-    if (name_length > kMaximumTextBytes || !set_framebuffer_size(width, height)) {
+    if (name_length > rfb_clipboard::kMaximumTextBytes || !set_framebuffer_size(width, height)) {
         fail("The desktop host declared an invalid framebuffer");
         return false;
     }
@@ -182,11 +184,12 @@ bool RfbClient::negotiate() {
     };
     if (!write_exact(pixel_format.data(), pixel_format.size())) return false;
     std::vector<uint8_t> encodings{2, 0};
-    append_u16(encodings, 4);
+    append_u16(encodings, 5);
     append_u32(encodings, static_cast<uint32_t>(kEncodingRaw));
     append_u32(encodings, static_cast<uint32_t>(kEncodingCopyRect));
     append_u32(encodings, static_cast<uint32_t>(kEncodingDesktopSize));
     append_u32(encodings, static_cast<uint32_t>(kEncodingExtendedDesktopSize));
+    append_u32(encodings, rfb_clipboard::kEncoding);
     return write_exact(encodings.data(), encodings.size()) && request_update(false);
 }
 
@@ -209,15 +212,109 @@ bool RfbClient::read_server_message() {
         std::vector<uint8_t> values(colors * 6U);
         return values.empty() || read_exact(values.data(), values.size());
     }
-    if (type == 3) {
-        std::array<uint8_t, 7> header{};
-        if (!read_exact(header.data(), header.size())) return false;
-        const uint32_t length = read_u32(header.data() + 3);
-        if (length > kMaximumTextBytes) return false;
+    if (type == 3) return read_clipboard_message();
+    fail("The desktop host sent an unsupported RFB message");
+    return false;
+}
+
+bool RfbClient::read_clipboard_message() {
+    std::array<uint8_t, 7> header{};
+    if (!read_exact(header.data(), header.size())) return false;
+    const int32_t signed_length = static_cast<int32_t>(read_u32(header.data() + 3));
+    if (signed_length >= 0) {
+        const size_t length = static_cast<size_t>(signed_length);
+        if (length > rfb_clipboard::kMaximumTextBytes) return false;
         std::vector<uint8_t> ignored(length);
         return ignored.empty() || read_exact(ignored.data(), ignored.size());
     }
-    fail("The desktop host sent an unsupported RFB message");
+    if (signed_length == std::numeric_limits<int32_t>::min()) return false;
+    const size_t length = static_cast<size_t>(-signed_length);
+    if (length < 4U || length > rfb_clipboard::kMaximumWireBytes) return false;
+    std::vector<uint8_t> body(length);
+    if (!read_exact(body.data(), body.size())) return false;
+    const auto extended = rfb_clipboard::parse_extended(body);
+    if (!extended.has_value()) return false;
+
+    if (extended->action == rfb_clipboard::ExtendedAction::Caps) {
+        const auto capabilities = rfb_clipboard::parse_capabilities(*extended);
+        if (!capabilities.has_value()) return false;
+        const uint32_t required = rfb_clipboard::kFormatText |
+            rfb_clipboard::kActionRequest | rfb_clipboard::kActionNotify | rfb_clipboard::kActionProvide;
+        if ((capabilities->flags & required) != required) return true;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            server_clipboard_flags_ = capabilities->flags;
+            clipboard_status_ = remote_clipboard_available_
+                ? RfbClipboardStatus::RemoteAvailable
+                : RfbClipboardStatus::Idle;
+            clipboard_failure_ = RfbClipboardFailure::None;
+        }
+        const auto response = rfb_clipboard::caps_message(6);
+        return write_exact(response.data(), response.size());
+    }
+    if (extended->action == rfb_clipboard::ExtendedAction::Notify) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (server_clipboard_flags_ == 0) return false;
+        remote_clipboard_available_ = (extended->flags & rfb_clipboard::kFormatText) != 0;
+        if (clipboard_status_ != RfbClipboardStatus::Sending &&
+            clipboard_status_ != RfbClipboardStatus::Receiving &&
+            clipboard_status_ != RfbClipboardStatus::Received) {
+            clipboard_status_ = remote_clipboard_available_
+                ? RfbClipboardStatus::RemoteAvailable
+                : RfbClipboardStatus::Idle;
+            clipboard_failure_ = RfbClipboardFailure::None;
+        }
+        return true;
+    }
+    if (extended->action == rfb_clipboard::ExtendedAction::Request) {
+        if ((extended->flags & rfb_clipboard::kFormatText) == 0) return false;
+        std::vector<uint8_t> text;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (clipboard_status_ != RfbClipboardStatus::Sending || !outbound_clipboard_pending_) return false;
+            text = outbound_clipboard_;
+        }
+        const auto response = rfb_clipboard::provide_message(6, text);
+        if (!response.has_value() || !write_exact(response->data(), response->size())) {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            fail_clipboard_locked(RfbClipboardFailure::TransferFailed);
+            return true;
+        }
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        outbound_clipboard_.clear();
+        outbound_clipboard_pending_ = false;
+        clipboard_status_ = remote_clipboard_available_
+            ? RfbClipboardStatus::RemoteAvailable
+            : RfbClipboardStatus::Idle;
+        clipboard_failure_ = RfbClipboardFailure::None;
+        return true;
+    }
+    if (extended->action == rfb_clipboard::ExtendedAction::Provide) {
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (clipboard_status_ != RfbClipboardStatus::Receiving) return false;
+        }
+        const auto text = rfb_clipboard::parse_provided_text(*extended);
+        if (!text.has_value()) return false;
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        received_clipboard_ = *text;
+        remote_clipboard_available_ = false;
+        clipboard_status_ = RfbClipboardStatus::Received;
+        clipboard_failure_ = RfbClipboardFailure::None;
+        return true;
+    }
+    if (extended->action == rfb_clipboard::ExtendedAction::Peek) {
+        bool text_available = false;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            text_available = outbound_clipboard_pending_;
+        }
+        const auto response = rfb_clipboard::action_message(
+            6,
+            rfb_clipboard::kActionNotify |
+                (text_available ? rfb_clipboard::kFormatText : 0U));
+        return write_exact(response.data(), response.size());
+    }
     return false;
 }
 
@@ -413,6 +510,98 @@ bool RfbClient::send_key(uint32_t keysym, bool pressed) {
     return write_exact(message.data(), message.size());
 }
 
+bool RfbClient::send_text(const std::vector<uint32_t>& keysyms) {
+    if (keysyms.size() > 4096) return false;
+    std::vector<uint8_t> messages;
+    messages.reserve(keysyms.size() * 16U);
+    for (const uint32_t keysym : keysyms) {
+        if (keysym == 0 || keysym > 0x0110ffffU) return false;
+        messages.insert(messages.end(), {4, 1, 0, 0});
+        append_u32(messages, keysym);
+        messages.insert(messages.end(), {4, 0, 0, 0});
+        append_u32(messages, keysym);
+    }
+    return messages.empty() || write_exact(messages.data(), messages.size());
+}
+
+RfbClipboardSnapshot RfbClient::clipboard_snapshot() {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if ((clipboard_status_ == RfbClipboardStatus::Sending ||
+         clipboard_status_ == RfbClipboardStatus::Receiving) &&
+        std::chrono::steady_clock::now() > clipboard_deadline_) {
+        fail_clipboard_locked(RfbClipboardFailure::Timeout);
+    }
+    return {clipboard_status_, remote_clipboard_available_, clipboard_failure_};
+}
+
+bool RfbClient::offer_clipboard_text(const std::vector<uint8_t>& utf8_text) {
+    if (utf8_text.size() > rfb_clipboard::kMaximumTextBytes) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        fail_clipboard_locked(RfbClipboardFailure::TextTooLarge);
+        return false;
+    }
+    if (!rfb_clipboard::valid_utf8(utf8_text)) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        fail_clipboard_locked(RfbClipboardFailure::InvalidText);
+        return false;
+    }
+    if (rfb_clipboard::normalize_android_text(utf8_text).size() >
+        rfb_clipboard::kMaximumTextBytes) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        fail_clipboard_locked(RfbClipboardFailure::TextTooLarge);
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (server_clipboard_flags_ == 0 || clipboard_status_ == RfbClipboardStatus::Sending ||
+            clipboard_status_ == RfbClipboardStatus::Receiving ||
+            clipboard_status_ == RfbClipboardStatus::Received) {
+            return false;
+        }
+        outbound_clipboard_ = utf8_text;
+        outbound_clipboard_pending_ = true;
+        clipboard_status_ = RfbClipboardStatus::Sending;
+        clipboard_failure_ = RfbClipboardFailure::None;
+        clipboard_deadline_ = std::chrono::steady_clock::now() + kClipboardTimeout;
+    }
+    const auto notification = rfb_clipboard::action_message(
+        6, rfb_clipboard::kActionNotify | rfb_clipboard::kFormatText);
+    if (write_exact(notification.data(), notification.size())) return true;
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    fail_clipboard_locked(RfbClipboardFailure::TransferFailed);
+    return false;
+}
+
+bool RfbClient::request_clipboard_text() {
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (server_clipboard_flags_ == 0 || !remote_clipboard_available_ ||
+            (clipboard_status_ != RfbClipboardStatus::RemoteAvailable &&
+             clipboard_status_ != RfbClipboardStatus::Failed)) {
+            return false;
+        }
+        clipboard_status_ = RfbClipboardStatus::Receiving;
+        clipboard_failure_ = RfbClipboardFailure::None;
+        clipboard_deadline_ = std::chrono::steady_clock::now() + kClipboardTimeout;
+    }
+    const auto request = rfb_clipboard::action_message(
+        6, rfb_clipboard::kActionRequest | rfb_clipboard::kFormatText);
+    if (write_exact(request.data(), request.size())) return true;
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    fail_clipboard_locked(RfbClipboardFailure::TransferFailed);
+    return false;
+}
+
+std::optional<std::vector<uint8_t>> RfbClient::take_clipboard_text() {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (clipboard_status_ != RfbClipboardStatus::Received) return std::nullopt;
+    std::vector<uint8_t> text = std::move(received_clipboard_);
+    received_clipboard_.clear();
+    clipboard_status_ = RfbClipboardStatus::Idle;
+    clipboard_failure_ = RfbClipboardFailure::None;
+    return text;
+}
+
 bool RfbClient::request_update(bool incremental) {
     std::array<uint8_t, 10> message{
         3,
@@ -473,6 +662,22 @@ void RfbClient::stop() {
         socket_ = -1;
     }
     detach_surface();
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    server_clipboard_flags_ = 0;
+    remote_clipboard_available_ = false;
+    outbound_clipboard_.clear();
+    outbound_clipboard_pending_ = false;
+    received_clipboard_.clear();
+    clipboard_status_ = RfbClipboardStatus::Unsupported;
+    clipboard_failure_ = RfbClipboardFailure::None;
+}
+
+void RfbClient::fail_clipboard_locked(RfbClipboardFailure failure) {
+    outbound_clipboard_.clear();
+    outbound_clipboard_pending_ = false;
+    received_clipboard_.clear();
+    clipboard_status_ = RfbClipboardStatus::Failed;
+    clipboard_failure_ = failure;
 }
 
 void RfbClient::fail(std::string message) {

@@ -3,6 +3,7 @@ package com.deskforge.app
 import android.Manifest
 import android.content.ComponentName
 import android.content.Context
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
@@ -20,10 +21,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.deskforge.app.engine.NativeDeskForgeEngine
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.ClipboardFailure
+import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import com.deskforge.app.ui.DesktopSurfaceCallbacks
+import com.deskforge.app.ui.DesktopSurface
 import com.deskforge.app.ui.DeskForgeApp
 import com.deskforge.app.ui.theme.DeskForgeTheme
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +46,9 @@ class MainActivity : ComponentActivity() {
         }
     private val renderState = androidx.compose.runtime.mutableStateOf<SessionState>(SessionState.Idle)
     private val capabilityState = androidx.compose.runtime.mutableStateOf<RuntimeCapabilities?>(null)
+    private val clipboardRenderState = androidx.compose.runtime.mutableStateOf<SessionClipboardState>(
+        SessionClipboardState.Unavailable,
+    )
     private val rootfsState = androidx.compose.runtime.mutableStateOf<String?>(null)
     private val updateRequiredState = androidx.compose.runtime.mutableStateOf(false)
     private var sessionService: DeskForgeSessionService? = null
@@ -49,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private var stateCollection: Job? = null
     private var currentSurface: Surface? = null
     private var currentViewport: DesktopViewport? = null
+    private var currentDesktopSurface: DesktopSurface? = null
     private var downloadConfirmationShown = false
 
     private val notificationPermission = registerForActivityResult(
@@ -66,16 +74,24 @@ class MainActivity : ComponentActivity() {
             serviceBound = true
             stateCollection?.cancel()
             stateCollection = lifecycleScope.launch {
-                localBinder.service.state.collectLatest { state ->
-                    if (state == SessionState.Idle &&
-                        (workspaceViewModel.state.value.progress != null ||
-                            workspaceViewModel.state.value.failure != null)
-                    ) {
-                        applyWorkspaceState(workspaceViewModel.state.value)
-                    } else {
-                        sessionState = state
+                launch {
+                    localBinder.service.state.collectLatest { state ->
+                        if (state == SessionState.Idle &&
+                            (workspaceViewModel.state.value.progress != null ||
+                                workspaceViewModel.state.value.failure != null)
+                        ) {
+                            applyWorkspaceState(workspaceViewModel.state.value)
+                        } else {
+                            sessionState = state
+                        }
+                        if (state is SessionState.Starting) attachCurrentSurface()
                     }
-                    if (state is SessionState.Starting) attachCurrentSurface()
+                }
+                launch {
+                    localBinder.service.clipboardState.collectLatest { state ->
+                        clipboardRenderState.value = state
+                        if (state is SessionClipboardState.Ready) receiveDesktopClipboard(state.generation)
+                    }
                 }
             }
             attachCurrentSurface()
@@ -86,6 +102,7 @@ class MainActivity : ComponentActivity() {
             stateCollection = null
             sessionService = null
             serviceBound = false
+            clipboardRenderState.value = SessionClipboardState.Unavailable
         }
     }
 
@@ -104,19 +121,25 @@ class MainActivity : ComponentActivity() {
                 DeskForgeApp(
                     sessionState = renderState.value,
                     capabilities = capabilityState.value,
+                    clipboardState = clipboardRenderState.value,
                     isInstalled = rootfsState.value != null,
                     requiresUpdate = updateRequiredState.value,
                     desktopCallbacks = DesktopSurfaceCallbacks(
                         onSurfaceReady = ::onSurfaceReady,
+                        onSurfaceViewReady = { currentDesktopSurface = it },
                         onSurfaceResized = ::onSurfaceResized,
                         onSurfaceDestroyed = ::onSurfaceDestroyed,
                         onPointer = ::onPointer,
                         onKey = ::onKey,
+                        onText = ::onText,
                     ),
                     onInstall = ::installFedora,
                     onCapabilityCheck = ::inspectCapabilities,
                     onStart = ::startSession,
                     onStop = ::stopSession,
+                    onShowKeyboard = { currentDesktopSurface?.showSoftwareKeyboard() },
+                    onPasteToDesktop = ::pasteToDesktop,
+                    onCopyFromDesktop = { sessionService?.requestDesktopClipboard() },
                 )
             }
         }
@@ -132,6 +155,7 @@ class MainActivity : ComponentActivity() {
         if (serviceBound) unbindService(connection)
         serviceBound = false
         sessionService = null
+        clipboardRenderState.value = SessionClipboardState.Unavailable
         stateCollection?.cancel()
         stateCollection = null
         super.onStop()
@@ -186,6 +210,8 @@ class MainActivity : ComponentActivity() {
 
     private fun onSurfaceDestroyed() {
         sessionService?.detachSurface()
+        currentDesktopSurface?.closeSoftwareKeyboard()
+        currentDesktopSurface = null
         currentSurface = null
         currentViewport = null
     }
@@ -202,6 +228,32 @@ class MainActivity : ComponentActivity() {
 
     private fun onKey(keysym: Int, pressed: Boolean) {
         sessionService?.sendKey(keysym, pressed)
+    }
+
+    private fun onText(text: String) {
+        sessionService?.sendText(text)
+    }
+
+    private fun pasteToDesktop() {
+        val service = sessionService ?: return
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        when (val result = AndroidClipboardBoundary.readPlainText(clipboard)) {
+            is AndroidClipboardBoundary.ReadResult.Failed -> service.reportClipboardFailure(result.reason)
+            is AndroidClipboardBoundary.ReadResult.Text -> service.pasteClipboardText(result.value)
+        }
+    }
+
+    private fun receiveDesktopClipboard(generation: Long) {
+        val service = sessionService ?: return
+        val text = service.receivedClipboard(generation) ?: return
+        val failure = runCatching {
+            val clip = AndroidClipboardBoundary.sensitivePlainText(
+                getString(R.string.clipboard_label),
+                text,
+            )
+            getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        }.exceptionOrNull()?.let { ClipboardFailure.ANDROID_CLIPBOARD_FAILED }
+        service.acknowledgeClipboard(generation, failure)
     }
 
     private fun applyWorkspaceState(state: WorkspaceState) {

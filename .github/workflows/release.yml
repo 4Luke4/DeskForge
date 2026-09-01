@@ -73,40 +73,9 @@ jobs:
 
       - name: Verify release prerequisites
         run: |
-          test -f fedora_xfce_44/src/main/assets/payload-manifest.json
-          jq --exit-status '
-            .schemaVersion == 2 and
-            (.parts | length) > 0 and
-            (.parts | length) <= 4 and
-            .archiveSizeBytes <= 4000000000 and
-            all(.parts | to_entries[];
-              .value.packName == (if .key == 0 then "fedora_xfce_44" else "fedora_xfce_44_\(.key)" end) and
-              .value.fileName == "rootfs.part0\(.key)" and
-              .value.sizeBytes > 0 and .value.sizeBytes < 1500000000 and
-              (.value.sha256 | test("^[a-f0-9]{64}$"))) and
-            (.archiveSha256 | test("^[a-f0-9]{64}$"))
-          ' fedora_xfce_44/src/main/assets/payload-manifest.json
+          scripts/verify-fedora-payload.sh
           test -x app/src/main/jniLibs/arm64-v8a/libproot.so
           test -x app/src/main/jniLibs/arm64-v8a/libproot-loader.so
-          actual_archive_size=0
-          while IFS=$'\t' read -r pack file size sha256; do
-            part="$pack/src/main/assets/$file"
-            test -f "$part"
-            test "$(stat --format='%s' "$part")" = "$size"
-            echo "$sha256  $part" | sha256sum --check --strict
-            actual_archive_size=$((actual_archive_size + size))
-          done < <(jq -r '.parts[] | [.packName, .fileName, .sizeBytes, .sha256] | @tsv' \
-            fedora_xfce_44/src/main/assets/payload-manifest.json)
-          test "$actual_archive_size" = \
-            "$(jq -r '.archiveSizeBytes' fedora_xfce_44/src/main/assets/payload-manifest.json)"
-          actual_archive_sha256="$({
-            while IFS=$'\t' read -r pack file; do
-              cat "$pack/src/main/assets/$file"
-            done < <(jq -r '.parts[] | [.packName, .fileName] | @tsv' \
-              fedora_xfce_44/src/main/assets/payload-manifest.json)
-          } | sha256sum | cut --delimiter=' ' --fields=1)"
-          test "$actual_archive_sha256" = \
-            "$(jq -r '.archiveSha256' fedora_xfce_44/src/main/assets/payload-manifest.json)"
           scripts/verify-proot-binary.sh \
             app/src/main/jniLibs/arm64-v8a/libproot.so \
             app/src/main/jniLibs/arm64-v8a/libproot-loader.so

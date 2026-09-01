@@ -15,6 +15,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.deskforge.app.engine.NativeDeskForgeEngine
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.ClipboardFailure
+import com.deskforge.app.model.ClipboardTransportStatus
+import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import kotlinx.coroutines.CoroutineScope
@@ -32,12 +35,17 @@ class DeskForgeSessionService : Service() {
     private lateinit var engine: NativeDeskForgeEngine
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Idle)
+    private val mutableClipboardState = MutableStateFlow<SessionClipboardState>(SessionClipboardState.Unavailable)
     private val operationLock = Any()
     private var launchInProgress = false
     private var stopRequested = false
     private var pendingRootfs: String? = null
     private var monitorJob: Job? = null
     val state: StateFlow<SessionState> = mutableState
+    val clipboardState: StateFlow<SessionClipboardState> = mutableClipboardState
+    private var receivedClipboard: ReceivedClipboard? = null
+    private var clipboardGeneration = 0L
+    private var localClipboardFailure: ClipboardFailure? = null
 
     inner class LocalBinder : Binder() {
         val service: DeskForgeSessionService get() = this@DeskForgeSessionService
@@ -58,6 +66,7 @@ class DeskForgeSessionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_PREPARE -> {
+                clearClipboardState()
                 val rootfs = intent.getStringExtra(EXTRA_ROOTFS)
                 if (rootfs.isNullOrBlank()) {
                     mutableState.value = SessionState.Failed(SessionFailure.WORKSPACE_UNAVAILABLE, true)
@@ -104,6 +113,7 @@ class DeskForgeSessionService : Service() {
             }
             if (shouldStop) {
                 engine.stopSession()
+                clearClipboardState()
                 mutableState.value = SessionState.Idle
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -111,6 +121,7 @@ class DeskForgeSessionService : Service() {
                 updateNotification(running = true)
                 startMonitoring()
             } else {
+                clearClipboardState()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -144,6 +155,55 @@ class DeskForgeSessionService : Service() {
         runWhileRunning { engine.sendKey(keysym, pressed) }
     }
 
+    fun sendText(text: String) {
+        runWhileRunning { engine.sendText(text) }
+    }
+
+    fun pasteClipboardText(text: String) {
+        runWhileRunning {
+            localClipboardFailure = null
+            mutableClipboardState.value = SessionClipboardState.Sending
+            if (!engine.offerClipboardText(text)) refreshClipboardState()
+        }
+    }
+
+    fun requestDesktopClipboard() {
+        runWhileRunning {
+            localClipboardFailure = null
+            mutableClipboardState.value = SessionClipboardState.Receiving
+            if (!engine.requestClipboardText()) refreshClipboardState()
+        }
+    }
+
+    fun receivedClipboard(generation: Long): String? = synchronized(operationLock) {
+        receivedClipboard?.takeIf { it.generation == generation }?.text
+    }
+
+    fun acknowledgeClipboard(generation: Long, failure: ClipboardFailure? = null) {
+        serviceScope.launch {
+            synchronized(operationLock) {
+                if (receivedClipboard?.generation != generation) return@launch
+                receivedClipboard = null
+            }
+            localClipboardFailure = failure
+            mutableClipboardState.value = failure?.let {
+                SessionClipboardState.Failed(it, remoteTextAvailable = false)
+            } ?: SessionClipboardState.Idle(remoteTextAvailable = false)
+        }
+    }
+
+    fun reportClipboardFailure(failure: ClipboardFailure) {
+        serviceScope.launch {
+            localClipboardFailure = failure
+            val remoteAvailable = when (val current = mutableClipboardState.value) {
+                is SessionClipboardState.Idle -> current.remoteTextAvailable
+                is SessionClipboardState.Failed -> current.remoteTextAvailable
+                else -> false
+            }
+            mutableClipboardState.value = SessionClipboardState.Failed(failure, remoteAvailable)
+        }
+    }
+
     fun stopDesktop() {
         val waitForLaunch = synchronized(operationLock) {
             if (mutableState.value == SessionState.Idle || mutableState.value is SessionState.Stopping) return
@@ -157,6 +217,7 @@ class DeskForgeSessionService : Service() {
         if (waitForLaunch) return
         serviceScope.launch {
             val result = engine.stopSession()
+            clearClipboardState()
             mutableState.value = if (result is SessionState.Failed) result else SessionState.Idle
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -167,6 +228,7 @@ class DeskForgeSessionService : Service() {
         monitorJob?.cancel()
         val launchActive = synchronized(operationLock) { launchInProgress }
         if (launchActive || mutableState.value != SessionState.Idle) engine.stopSession()
+        clearClipboardState()
         engine.detachSurface()
         serviceScope.cancel()
         super.onDestroy()
@@ -176,9 +238,14 @@ class DeskForgeSessionService : Service() {
         monitorJob?.cancel()
         monitorJob = serviceScope.launch {
             while (mutableState.value is SessionState.Running) {
-                delay(1_000)
+                delay(
+                    if (mutableClipboardState.value is SessionClipboardState.Sending ||
+                        mutableClipboardState.value is SessionClipboardState.Receiving
+                    ) 200 else 1_000,
+                )
                 if (!engine.isDisplayConnected()) {
                     engine.stopSession()
+                    clearClipboardState()
                     mutableState.value = SessionState.Failed(
                         SessionFailure.DISPLAY_DISCONNECTED,
                         recoverable = true,
@@ -187,6 +254,7 @@ class DeskForgeSessionService : Service() {
                     stopSelf()
                     break
                 }
+                refreshClipboardState()
             }
         }
     }
@@ -196,6 +264,39 @@ class DeskForgeSessionService : Service() {
         serviceScope.launch {
             if (mutableState.value is SessionState.Running) action()
         }
+    }
+
+    private fun refreshClipboardState() {
+        if (mutableClipboardState.value is SessionClipboardState.Ready || localClipboardFailure != null) return
+        val snapshot = engine.clipboardSnapshot()
+        mutableClipboardState.value = when (snapshot.status) {
+            ClipboardTransportStatus.UNSUPPORTED -> SessionClipboardState.Unavailable
+            ClipboardTransportStatus.IDLE -> SessionClipboardState.Idle(snapshot.remoteTextAvailable)
+            ClipboardTransportStatus.REMOTE_AVAILABLE -> SessionClipboardState.Idle(remoteTextAvailable = true)
+            ClipboardTransportStatus.SENDING -> SessionClipboardState.Sending
+            ClipboardTransportStatus.RECEIVING -> SessionClipboardState.Receiving
+            ClipboardTransportStatus.RECEIVED -> {
+                val text = engine.takeClipboardText()
+                if (text == null) {
+                    SessionClipboardState.Failed(ClipboardFailure.INVALID_TEXT, snapshot.remoteTextAvailable)
+                } else {
+                    val received = synchronized(operationLock) {
+                        ReceivedClipboard(++clipboardGeneration, text).also { receivedClipboard = it }
+                    }
+                    SessionClipboardState.Ready(received.generation)
+                }
+            }
+            ClipboardTransportStatus.FAILED -> SessionClipboardState.Failed(
+                snapshot.failure ?: ClipboardFailure.TRANSFER_FAILED,
+                snapshot.remoteTextAvailable,
+            )
+        }
+    }
+
+    private fun clearClipboardState() {
+        synchronized(operationLock) { receivedClipboard = null }
+        localClipboardFailure = null
+        mutableClipboardState.value = SessionClipboardState.Unavailable
     }
 
     private fun promoteToForeground() {
@@ -264,4 +365,6 @@ class DeskForgeSessionService : Service() {
         private const val CHANNEL_ID = "desktop-session"
         private const val NOTIFICATION_ID = 3100
     }
+
+    private data class ReceivedClipboard(val generation: Long, val text: String)
 }
