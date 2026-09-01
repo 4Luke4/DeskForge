@@ -24,9 +24,15 @@ guest_is_executable() {
   local path="$1"
   local mode
 
-  test -f "${path}"
+  if ! test -f "${path}"; then
+    printf 'Required guest executable is missing: %s\n' "${path}" >&2
+    return 1
+  fi
   mode="$(stat --format='%a' "${path}")"
-  (( (8#${mode} & 8#111) != 0 ))
+  if (( (8#${mode} & 8#111) == 0 )); then
+    printf 'Required guest file is not executable: %s (mode %s)\n' "${path}" "${mode}" >&2
+    return 1
+  fi
 }
 
 image_url="$(jq -r '.imageUrl' "${manifest}")"
@@ -114,6 +120,7 @@ audio_config_path="${working_directory}/deskforge-audio.conf"
 sudo install -D --mode=0644 \
   "${audio_config_path}" \
   "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+printf 'DeskForge guest audio configuration staged.\n'
 guest_is_executable "${rootfs_directory}/usr/bin/Xvnc"
 guest_is_executable "${rootfs_directory}/usr/bin/startxfce4"
 guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
@@ -137,6 +144,7 @@ if grep --extended-regexp --quiet 'tcp:|server.address|native-protocol-tcp' \
 fi
 
 audio_packages_json='[]'
+printf 'Recording Fedora audio package identities.\n'
 while IFS= read -r package_name; do
   package_identity="$(sudo rpm --root "${rootfs_directory}" --query \
     --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${package_name}")"
@@ -145,6 +153,8 @@ while IFS= read -r package_name; do
     <<<"${audio_packages_json}")"
 done < <(jq -r '.audioHost.requiredPackages[]' "${manifest}")
 jq -r '.[]' <<<"${audio_packages_json}" > "${source_output}/fedora-audio-packages.txt"
+printf 'Recorded %s Fedora audio package identities.\n' \
+  "$(jq 'length' <<<"${audio_packages_json}")"
 while read -r library; do
   find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
     -name "${library}" -print -quit | grep --quiet .
