@@ -25,7 +25,12 @@ curl --fail --location --retry 3 https://fedoraproject.org/fedora.gpg --output "
 gpgv --keyring "${working_directory}/fedora.gpg" "${working_directory}/CHECKSUM"
 grep --fixed-strings --quiet "SHA256 (${image_name}) = ${expected_sha256}" "${working_directory}/CHECKSUM"
 mkdir -p "${working_directory}/rpmdb"
-rpmkeys --dbpath "${working_directory}/rpmdb" --import "${working_directory}/fedora.gpg"
+# RPM 6 accepts armored public keys, while Fedora publishes the verified multi-key GPG keyring.
+gpg --batch --no-options --no-default-keyring \
+  --keyring "${working_directory}/fedora.gpg" \
+  --armor --export > "${working_directory}/fedora-rpm.asc"
+test -s "${working_directory}/fedora-rpm.asc"
+rpmkeys --dbpath "${working_directory}/rpmdb" --import "${working_directory}/fedora-rpm.asc"
 
 curl --fail --location --retry 3 "${image_url}" --output "${working_directory}/${image_name}"
 echo "${expected_sha256}  ${working_directory}/${image_name}" | sha256sum --check --strict
