@@ -145,13 +145,26 @@ fi
 
 audio_packages_json='[]'
 printf 'Recording Fedora audio package identities.\n'
-while IFS= read -r package_name; do
-  package_identity="$(sudo rpm --root "${rootfs_directory}" --query \
-    --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${package_name}")"
-  test -n "${package_identity}"
+mapfile -t required_audio_packages < <(jq -r '.audioHost.requiredPackages[]' "${manifest}")
+mapfile -t required_audio_executables < <(jq -r '.audioHost.requiredExecutables[]' "${manifest}")
+test "${#required_audio_packages[@]}" = "${#required_audio_executables[@]}"
+for index in "${!required_audio_packages[@]}"; do
+  package_name="${required_audio_packages[$index]}"
+  guest_executable="${required_audio_executables[$index]}"
+  printf 'Resolving %s from %s.\n' "${package_name}" "${guest_executable}"
+  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" --query --file \
+    --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${guest_executable}")"; then
+    printf 'The signed Fedora package database does not own %s.\n' "${guest_executable}" >&2
+    exit 1
+  fi
+  if [[ "${package_identity}" != "${package_name}-"* ]]; then
+    printf 'Unexpected Fedora package owner for %s: %s\n' \
+      "${guest_executable}" "${package_identity}" >&2
+    exit 1
+  fi
   audio_packages_json="$(jq --arg identity "${package_identity}" '. + [$identity]' \
     <<<"${audio_packages_json}")"
-done < <(jq -r '.audioHost.requiredPackages[]' "${manifest}")
+done
 jq -r '.[]' <<<"${audio_packages_json}" > "${source_output}/fedora-audio-packages.txt"
 printf 'Recorded %s Fedora audio package identities.\n' \
   "$(jq 'length' <<<"${audio_packages_json}")"
