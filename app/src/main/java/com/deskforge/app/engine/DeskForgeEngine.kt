@@ -2,6 +2,7 @@ package com.deskforge.app.engine
 
 import android.view.Surface
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionState
 
@@ -22,6 +23,16 @@ interface DeskForgeEngine {
     fun sendPointer(x: Int, y: Int, buttons: Int): Boolean
 
     fun sendKey(keysym: Int, pressed: Boolean): Boolean
+
+    fun sendText(text: String): Boolean
+
+    fun clipboardSnapshot(): ClipboardTransportSnapshot
+
+    fun offerClipboardText(text: String): Boolean
+
+    fun requestClipboardText(): Boolean
+
+    fun takeClipboardText(): String?
 
     fun isDisplayConnected(): Boolean
 }

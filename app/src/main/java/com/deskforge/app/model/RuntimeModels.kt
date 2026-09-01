@@ -67,3 +67,41 @@ sealed interface SessionState {
     data object Stopping : SessionState
     data class Failed(val reason: SessionFailure, val recoverable: Boolean) : SessionState
 }
+
+enum class ClipboardTransportStatus {
+    UNSUPPORTED,
+    IDLE,
+    REMOTE_AVAILABLE,
+    SENDING,
+    RECEIVING,
+    RECEIVED,
+    FAILED,
+}
+
+enum class ClipboardFailure {
+    NO_PLAIN_TEXT,
+    TEXT_TOO_LARGE,
+    INVALID_TEXT,
+    TRANSFER_TIMEOUT,
+    TRANSFER_FAILED,
+    ANDROID_CLIPBOARD_FAILED,
+}
+
+data class ClipboardTransportSnapshot(
+    val status: ClipboardTransportStatus,
+    val remoteTextAvailable: Boolean,
+    val failure: ClipboardFailure? = null,
+)
+
+/** User-visible clipboard state; clipboard contents deliberately remain outside Compose state. */
+sealed interface SessionClipboardState {
+    data object Unavailable : SessionClipboardState
+    data class Idle(val remoteTextAvailable: Boolean) : SessionClipboardState
+    data object Sending : SessionClipboardState
+    data object Receiving : SessionClipboardState
+    data class Ready(val generation: Long) : SessionClipboardState
+    data class Failed(
+        val reason: ClipboardFailure,
+        val remoteTextAvailable: Boolean,
+    ) : SessionClipboardState
+}

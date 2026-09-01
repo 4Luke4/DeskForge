@@ -4,11 +4,16 @@ import android.content.Context
 import android.view.Surface
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.ClipboardFailure
+import com.deskforge.app.model.ClipboardTransportSnapshot
+import com.deskforge.app.model.ClipboardTransportStatus
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import java.io.File
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 
 /**
  * JNI adapter. Native failures are converted into structured application state so the UI never
@@ -103,6 +108,48 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     override fun sendKey(keysym: Int, pressed: Boolean): Boolean = nativeSendKey(keysym, pressed)
 
+    override fun sendText(text: String): Boolean {
+        val keysyms = RfbTextEncoder.encode(text) ?: return false
+        return nativeSendText(keysyms)
+    }
+
+    override fun clipboardSnapshot(): ClipboardTransportSnapshot {
+        val values = nativeClipboardSnapshot()
+        val status = values.getOrNull(0)?.let { ClipboardTransportStatus.entries.getOrNull(it) }
+            ?: ClipboardTransportStatus.UNSUPPORTED
+        val failure = when (values.getOrNull(2) ?: 0) {
+            1 -> ClipboardFailure.TEXT_TOO_LARGE
+            2 -> ClipboardFailure.INVALID_TEXT
+            3 -> ClipboardFailure.TRANSFER_TIMEOUT
+            4 -> ClipboardFailure.TRANSFER_FAILED
+            else -> null
+        }
+        return ClipboardTransportSnapshot(
+            status = status,
+            remoteTextAvailable = values.getOrNull(1) == 1,
+            failure = failure,
+        )
+    }
+
+    override fun offerClipboardText(text: String): Boolean {
+        val bytes = text.toByteArray(StandardCharsets.UTF_8)
+        if (bytes.size > MAX_CLIPBOARD_TEXT_BYTES) return false
+        return nativeOfferClipboardText(bytes)
+    }
+
+    override fun requestClipboardText(): Boolean = nativeRequestClipboardText()
+
+    override fun takeClipboardText(): String? {
+        val bytes = nativeTakeClipboardText() ?: return null
+        return runCatching {
+            StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(bytes))
+                .toString()
+        }.getOrNull()
+    }
+
     override fun isDisplayConnected(): Boolean = nativeDisplayConnected()
 
     /** Restores UI ownership of a native session after an Android configuration change. */
@@ -159,9 +206,21 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     private external fun nativeSendKey(keysym: Int, pressed: Boolean): Boolean
 
+    private external fun nativeSendText(keysyms: IntArray): Boolean
+
+    private external fun nativeClipboardSnapshot(): IntArray
+
+    private external fun nativeOfferClipboardText(text: ByteArray): Boolean
+
+    private external fun nativeRequestClipboardText(): Boolean
+
+    private external fun nativeTakeClipboardText(): ByteArray?
+
     private external fun nativeDisplayConnected(): Boolean
 
     private companion object {
+        const val MAX_CLIPBOARD_TEXT_BYTES = 1024 * 1024
+
         init {
             System.loadLibrary("deskforge_engine")
         }

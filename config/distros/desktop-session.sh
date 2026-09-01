@@ -37,8 +37,11 @@ trap cleanup EXIT INT TERM
     -rfbunixpath "${rfb_socket}" \
     -rfbunixmode 0600 \
     -SecurityTypes None \
-    -AcceptCutText=0 \
-    -SendCutText=0 \
+    -AcceptCutText=1 \
+    -SendCutText=1 \
+    -MaxCutText=1052672 \
+    -SendPrimary=0 \
+    -SetPrimary=0 \
     -nolisten tcp \
     -localhost=yes &
 xvnc_pid=$!
