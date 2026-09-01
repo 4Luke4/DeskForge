@@ -4,13 +4,34 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 manifest="${repository_root}/config/distros/fedora-xfce-44.json"
 working_directory="${RUNNER_TEMP:-/tmp}/deskforge-fedora-asset"
-uncompressed_archive="${working_directory}/rootfs.tar"
-rootfs_directory="${working_directory}/rootfs"
 output_archive="${working_directory}/rootfs.tar.gz"
+uncompressed_size_file="${working_directory}/rootfs.tar.size"
 source_output="${working_directory}/corresponding-source"
+lower_directory="${working_directory}/mount/lower"
+upper_directory="${working_directory}/mount/upper"
+overlay_work_directory="${working_directory}/mount/work"
+rootfs_directory="${working_directory}/mount/merged"
+
+# shellcheck source=scripts/lib/fedora-asset-filesystem.sh
+source "${repository_root}/scripts/lib/fedora-asset-filesystem.sh"
+
+cleanup_mounts() {
+  deskforge_unmount_erofs_overlay "${rootfs_directory}" "${lower_directory}"
+}
+trap cleanup_mounts EXIT
+
+guest_is_executable() {
+  local path="$1"
+  local mode
+
+  test -f "${path}"
+  mode="$(stat --format='%a' "${path}")"
+  (( (8#${mode} & 8#111) != 0 ))
+}
 
 image_url="$(jq -r '.imageUrl' "${manifest}")"
 image_name="$(jq -r '.fileName' "${manifest}")"
+expected_image_size="$(jq -r '.sizeBytes' "${manifest}")"
 expected_sha256="$(jq -r '.sha256' "${manifest}")"
 checksum_url="$(jq -r '.checksumUrl' "${manifest}")"
 part_size="$(jq -r '.assetDelivery.partSizeBytes' "${manifest}")"
@@ -19,9 +40,13 @@ maximum_archive_size="$(jq -r '.assetDelivery.maximumArchiveSizeBytes' "${manife
 mapfile -t pack_names < <(jq -r '.assetDelivery.packNames[]' "${manifest}")
 
 rm -rf "${working_directory}"
-mkdir -p "${working_directory}" "${rootfs_directory}" "${source_output}"
-curl --fail --location --retry 3 "${checksum_url}" --output "${working_directory}/CHECKSUM"
-curl --fail --location --retry 3 https://fedoraproject.org/fedora.gpg --output "${working_directory}/fedora.gpg"
+mkdir -p "${working_directory}" "${source_output}"
+
+stage_started="${SECONDS}"
+curl --fail --location --retry 3 --silent --show-error \
+  "${checksum_url}" --output "${working_directory}/CHECKSUM"
+curl --fail --location --retry 3 --silent --show-error \
+  https://fedoraproject.org/fedora.gpg --output "${working_directory}/fedora.gpg"
 gpgv --keyring "${working_directory}/fedora.gpg" "${working_directory}/CHECKSUM"
 grep --fixed-strings --quiet "SHA256 (${image_name}) = ${expected_sha256}" "${working_directory}/CHECKSUM"
 mkdir -p "${working_directory}/rpmdb"
@@ -32,45 +57,59 @@ gpg --batch --no-options --no-default-keyring \
 test -s "${working_directory}/fedora-rpm.asc"
 rpmkeys --dbpath "${working_directory}/rpmdb" --import "${working_directory}/fedora-rpm.asc"
 
-curl --fail --location --retry 3 "${image_url}" --output "${working_directory}/${image_name}"
+curl --fail --location --retry 3 --silent --show-error \
+  "${image_url}" --output "${working_directory}/${image_name}"
+test "$(stat --format='%s' "${working_directory}/${image_name}")" = "${expected_image_size}"
 echo "${expected_sha256}  ${working_directory}/${image_name}" | sha256sum --check --strict
+printf 'Fedora verification and download: %ss\n' "$((SECONDS - stage_started))"
 
 # Fedora 44 retains the historical squashfs.img name for its EROFS live filesystem.
+stage_started="${SECONDS}"
 xorriso -osirrox on -indev "${working_directory}/${image_name}" \
   -extract /LiveOS/squashfs.img "${working_directory}/squashfs.img"
-# fsck.erofs validates every inode and compressed extent while extracting the signed, pinned image.
-sudo fsck.erofs --extract="${rootfs_directory}" "${working_directory}/squashfs.img"
-sudo chown --recursive --no-dereference "$(id -u):$(id -g)" "${rootfs_directory}"
-test -x "${rootfs_directory}/usr/bin/startxfce4"
+# Avoid materializing the immutable rootfs: OverlayFS redirects only verified package updates and
+# the DeskForge bootstrap to the runner's writable filesystem.
+deskforge_mount_erofs_overlay \
+  "${working_directory}/squashfs.img" \
+  "${lower_directory}" \
+  "${upper_directory}" \
+  "${overlay_work_directory}" \
+  "${rootfs_directory}"
+guest_is_executable "${rootfs_directory}/usr/bin/startxfce4"
+printf 'Fedora image extraction and mount: %ss\n' "$((SECONDS - stage_started))"
 
 # Overlay only immutable Fedora packages. Dependencies must already be present in the signed spin;
 # missing runtime libraries are detected below rather than resolved from mutable repository state.
+stage_started="${SECONDS}"
 while IFS=$'\t' read -r package_name package_url package_size package_sha256; do
   package_path="${working_directory}/${package_name}.rpm"
-  curl --fail --location --retry 3 "${package_url}" --output "${package_path}"
+  package_cpio="${working_directory}/${package_name}.cpio"
+  curl --fail --location --retry 3 --silent --show-error \
+    "${package_url}" --output "${package_path}"
   test "$(stat --format='%s' "${package_path}")" = "${package_size}"
   echo "${package_sha256}  ${package_path}" | sha256sum --check --strict
   rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${package_path}" | grep --fixed-strings --quiet "digests signatures OK"
-  (cd "${rootfs_directory}" && rpm2cpio "${package_path}" | cpio --extract --make-directories --preserve-modification-time)
+  rpm2cpio "${package_path}" > "${package_cpio}"
+  deskforge_apply_cpio_overlay "${package_cpio}" "${rootfs_directory}"
 done < <(jq -r '.desktopHost.packages[] | [.name, .url, .sizeBytes, .sha256] | @tsv' "${manifest}")
 
 source_url="$(jq -r '.desktopHost.source.url' "${manifest}")"
 source_size="$(jq -r '.desktopHost.source.sizeBytes' "${manifest}")"
 source_sha256="$(jq -r '.desktopHost.source.sha256' "${manifest}")"
 source_path="${source_output}/tigervnc.src.rpm"
-curl --fail --location --retry 3 "${source_url}" --output "${source_path}"
+curl --fail --location --retry 3 --silent --show-error "${source_url}" --output "${source_path}"
 test "$(stat --format='%s' "${source_path}")" = "${source_size}"
 echo "${source_sha256}  ${source_path}" | sha256sum --check --strict
 rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${source_path}" | grep --fixed-strings --quiet "digests signatures OK"
 
-install -D --mode=0755 \
+sudo install -D --mode=0755 \
   "${repository_root}/config/distros/desktop-session.sh" \
   "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
-test -x "${rootfs_directory}/usr/bin/Xvnc"
-test -x "${rootfs_directory}/usr/bin/startxfce4"
-test -x "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
+guest_is_executable "${rootfs_directory}/usr/bin/Xvnc"
+guest_is_executable "${rootfs_directory}/usr/bin/startxfce4"
+guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
 for guest_executable in env bash dbus-run-session mkdir chmod rm seq sleep; do
-  test -x "${rootfs_directory}/usr/bin/${guest_executable}"
+  guest_is_executable "${rootfs_directory}/usr/bin/${guest_executable}"
 done
 while read -r library; do
   find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
@@ -81,25 +120,18 @@ interpreter="$(readelf --program-headers "${rootfs_directory}/usr/bin/Xvnc" | \
   sed -n 's/.*Requesting program interpreter: \([^]]*\)].*/\1/p')"
 test -n "${interpreter}"
 test -e "${rootfs_directory}${interpreter}"
+printf 'Fedora verified desktop overlay: %ss\n' "$((SECONDS - stage_started))"
 
-# Repack deterministically after applying the verified desktop-host overlay.
-tar \
-  --create \
-  --file "${uncompressed_archive}.prepared" \
-  --directory "${rootfs_directory}" \
-  --format=pax \
-  --sort=name \
-  --mtime='@0' \
-  --owner=0 \
-  --group=0 \
-  --numeric-owner \
-  .
-mv "${uncompressed_archive}.prepared" "${uncompressed_archive}"
-gzip --best --no-name --stdout "${uncompressed_archive}" > "${output_archive}"
+# Stream the merged view directly so the runner never writes an expanded rootfs or intermediate tar.
+stage_started="${SECONDS}"
+deskforge_stream_deterministic_archive \
+  "${rootfs_directory}" "${output_archive}" "${uncompressed_size_file}"
+cleanup_mounts
+printf 'Fedora deterministic packaging: %ss\n' "$((SECONDS - stage_started))"
 
 archive_size="$(stat --format='%s' "${output_archive}")"
 archive_sha256="$(sha256sum "${output_archive}" | cut --delimiter=' ' --fields=1)"
-uncompressed_size="$(stat --format='%s' "${uncompressed_archive}")"
+uncompressed_size="$(tr -d '[:space:]' < "${uncompressed_size_file}")"
 if (( archive_size > maximum_archive_size || archive_size > part_size * maximum_parts )); then
   echo "Generated rootfs exceeds the configured multi-pack capacity: ${archive_size}" >&2
   exit 1
@@ -150,3 +182,5 @@ jq --null-input \
     uncompressedSizeBytes: $uncompressedSizeBytes,
     parts: $parts
   }' > "${repository_root}/fedora_xfce_44/src/main/assets/payload-manifest.json"
+
+"${repository_root}/scripts/verify-fedora-payload.sh" "${repository_root}"

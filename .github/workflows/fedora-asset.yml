@@ -6,19 +6,23 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: fedora-asset-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   prepare:
     name: Verify and prepare Fedora XFCE
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 35
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install image extraction tools
+      - name: Install verified-image packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes binutils cpio erofs-utils rpm2cpio rpm xorriso
+          sudo apt-get install --yes binutils cpio pigz rpm2cpio rpm util-linux xorriso
 
       - name: Prepare verified root filesystem
         run: scripts/prepare-fedora-asset.sh
@@ -43,3 +47,5 @@ jobs:
             build/fedora-corresponding-source/
           if-no-files-found: error
           retention-days: 7
+          # The rootfs parts are already gzip-compressed; recompressing them wastes runner time.
+          compression-level: 0

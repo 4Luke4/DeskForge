@@ -22,3 +22,9 @@ that run's multi-pack payload and corresponding TigerVNC source, and revalidates
 aggregate digest before signing. A missing or mismatched payload, digest, source artifact, or
 separately packaged PRoot executable fails closed. Google Play upload remains a deliberate
 human-controlled operation outside this milestone.
+
+Fedora asset preparation is manually dispatched and has a 35-minute hard timeout. It verifies the
+pinned image before mounting it read-only, applies signed RPMs through an ephemeral writable overlay,
+and streams the merged tree directly into parallel gzip. The workflow logs each expensive stage and
+uploads the already-compressed payload without artifact recompression; a preparation exceeding the
+30-minute operational target requires investigation rather than a timeout increase.

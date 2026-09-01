@@ -21,7 +21,9 @@ approved documents, uses private Unix sockets, and exports no Android service or
   transactional activation.
 - **Supply-chain replacement:** immutable source and executable SHA-256 manifests, reproducible
   PRoot builds, packaged-byte comparison, Fedora OpenPGP verification, pinned Actions, dependency
-  review, SBOM generation, corresponding source, and provenance.
+  review, SBOM generation, corresponding source, and provenance. Fedora images are mounted during
+  asset preparation only after signature and exact-digest verification, as a read-only, no-execute
+  lower layer; signed RPM changes are confined to an ephemeral writable overlay.
 - **Runtime replacement or loader persistence:** the installed PRoot ELF and loader are independently
   size- and digest-checked before inspection and every launch. Both execute only from Android's
   read-only native-library directory; app-private scratch storage is cleaned on launch failure, stop,

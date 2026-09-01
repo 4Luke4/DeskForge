@@ -18,6 +18,7 @@ jobs:
   policy:
     name: Repository policy
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,6 +65,14 @@ jobs:
             .assetDelivery.partSizeBytes < 1500000000 and
             .assetDelivery.maximumArchiveSizeBytes == 4000000000
           ' config/distros/fedora-xfce-44.json
+
+      - name: Install Fedora pipeline fixture tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cpio erofs-utils pigz util-linux
+
+      - name: Test Fedora asset pipeline
+        run: scripts/test-fedora-asset-pipeline.sh
 
       - name: Test bounded RFB protocol primitives
         run: bash scripts/test-rfb-protocol.sh
