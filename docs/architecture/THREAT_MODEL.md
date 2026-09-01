@@ -30,8 +30,14 @@ approved documents, uses private Unix sockets, and exports no Android service or
   and stale-session recovery without following links.
 - **Guest persistence after stop:** a dedicated process group, `--kill-on-exit`, synchronous reap,
   and stale-session recovery.
-- **Unauthorized audio capture:** no microphone permission or guest capture bridge is present in this
-  milestone; a future host must require Android permission and explicit per-session consent.
+- **Unauthorized audio capture:** every session starts with capture disabled. The foreground service
+  rechecks Android permission, requires a visible per-session action, exposes a persistent stop
+  control, and stops and zeroizes capture on disable, revocation, teardown, or partial failure. The
+  PRoot device allowlist removes direct guest paths to Android Binder and raw audio nodes instead of
+  carrying the host's complete device tree into the guest.
+- **Malformed or replaced audio transport:** the native supervisor creates owner-only FIFOs through
+  a trusted directory descriptor, rejects links and non-FIFOs, retains validated descriptors, and
+  bounds all PCM buffering. PipeWire exposes no audio TCP listener.
 - **GPU incompatibility:** preliminary Vulkan-loader probing with an explicit software fallback.
   Device/driver self-tests remain a production release gate.
 - **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
@@ -46,6 +52,11 @@ approved documents, uses private Unix sockets, and exports no Android service or
 
 ## Release validation
 
-The production threat model must be revisited after accelerated display, audio, and the
-physical-device matrix are complete. Google Play executable-code treatment and every copyleft distribution
+The production threat model must be revisited after accelerated display and the physical-device
+matrix are complete. Google Play microphone disclosure and executable-code treatment, plus every copyleft distribution
 obligation require explicit review before publication.
+
+PRoot and the device allowlist are not a UID or kernel sandbox. Before production, adversarial guest
+testing must confirm that Android IPC, inherited descriptors, procfs paths, and same-UID behavior do
+not provide an alternate microphone path outside the consented bridge; otherwise microphone capture
+must remain disabled or move behind a stronger process boundary.

@@ -31,6 +31,12 @@ require(Regex("^[a-f0-9]{64}$").matches(prootLoaderSha256)) { "Invalid PRoot loa
 require(prootRuntime["fileName"] == "libproot.so") { "Unexpected PRoot runtime file name" }
 require(prootLoader["fileName"] == "libproot-loader.so") { "Unexpected PRoot loader file name" }
 
+val fedoraManifest = JsonSlurper().parse(rootProject.file("config/distros/fedora-xfce-44.json")) as Map<*, *>
+require(fedoraManifest["schemaVersion"] == 3) { "Unsupported Fedora distribution manifest schema" }
+val fedoraWorkspaceIntegrationVersion =
+    (fedoraManifest["workspaceIntegrationVersion"] as Number).toInt()
+require(fedoraWorkspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
+
 val androidToolchain = Properties().apply {
     rootProject.file("config/android/toolchain.properties").inputStream().use(::load)
 }
@@ -65,6 +71,11 @@ android {
         buildConfigField("long", "PROOT_SIZE_BYTES", "${prootSizeBytes}L")
         buildConfigField("String", "PROOT_LOADER_SHA256", "\"$prootLoaderSha256\"")
         buildConfigField("long", "PROOT_LOADER_SIZE_BYTES", "${prootLoaderSizeBytes}L")
+        buildConfigField(
+            "int",
+            "FEDORA_WORKSPACE_INTEGRATION_VERSION",
+            fedoraWorkspaceIntegrationVersion.toString(),
+        )
 
         require(prootBinary["abi"] == toolchainString("abi")) {
             "PRoot binary ABI does not match the Android toolchain"

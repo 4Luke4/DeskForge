@@ -21,6 +21,10 @@ mkdir -p "${working_directory}/base/usr/bin" "${working_directory}/base/etc"
 printf 'base-xvnc\n' > "${working_directory}/base/usr/bin/Xvnc"
 printf 'base-marker\n' > "${working_directory}/base/etc/fedora-release"
 chmod 0555 "${working_directory}/base/usr/bin/Xvnc"
+for executable in pipewire pipewire-pulse wireplumber pactl; do
+  printf '#!/usr/bin/env sh\nexit 0\n' > "${working_directory}/base/usr/bin/${executable}"
+  chmod 0555 "${working_directory}/base/usr/bin/${executable}"
+done
 mkfs.erofs -T 0 "${working_directory}/rootfs.erofs" "${working_directory}/base" > /dev/null
 
 deskforge_mount_erofs_overlay \
@@ -37,6 +41,11 @@ deskforge_apply_cpio_overlay "${working_directory}/payload.cpio" "${merged}"
 printf '#!/usr/bin/env sh\nexit 0\n' > "${working_directory}/desktop-session"
 sudo install -D --mode=0755 \
   "${working_directory}/desktop-session" "${merged}/usr/libexec/deskforge/desktop-session"
+sudo install -D --mode=0755 \
+  "${repository_root}/config/distros/guest-session.sh" "${merged}/usr/libexec/deskforge/guest-session"
+"${repository_root}/scripts/render-pipewire-audio-config.sh" "${working_directory}/deskforge-audio.conf"
+sudo install -D --mode=0644 "${working_directory}/deskforge-audio.conf" \
+  "${merged}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
 
 test "$(cat "${merged}/usr/bin/Xvnc")" = "overlay-xvnc"
 test "$(cat "${merged}/etc/fedora-release")" = "base-marker"
@@ -58,6 +67,11 @@ tar --extract --gzip --file="${working_directory}/first.tar.gz" \
 test "$(cat "${working_directory}/extracted/usr/bin/Xvnc")" = "overlay-xvnc"
 test "$(cat "${working_directory}/extracted/etc/fedora-release")" = "base-marker"
 test -x "${working_directory}/extracted/usr/libexec/deskforge/desktop-session"
+test -x "${working_directory}/extracted/usr/libexec/deskforge/guest-session"
+grep --fixed-strings --quiet module-pipe-sink \
+  "${working_directory}/extracted/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+grep --fixed-strings --quiet module-pipe-source \
+  "${working_directory}/extracted/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
 
 fixture_repository="${working_directory}/repository"
 mkdir -p "${fixture_repository}/config/distros"
@@ -76,10 +90,17 @@ jq --null-input \
   --argjson archiveSizeBytes "${archive_size}" \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   '{
-    schemaVersion: 2,
+    schemaVersion: 3,
     distroId: "fedora-xfce-44",
     release: "44",
     desktopHostVersion: "1.16.2-4.fc44",
+    workspaceIntegrationVersion: 1,
+    audioHostPackages: [
+      "pipewire-1.6.2-1.fc44.aarch64",
+      "pipewire-pulseaudio-1.6.2-1.fc44.aarch64",
+      "wireplumber-0.5.8-1.fc44.aarch64",
+      "pulseaudio-utils-17.0-9.fc44.aarch64"
+    ],
     archiveSha256: $archiveSha256,
     archiveSizeBytes: $archiveSizeBytes,
     uncompressedSizeBytes: $uncompressedSizeBytes,
@@ -97,6 +118,19 @@ cp "${manifest}" "${manifest}.valid"
 jq '.parts[0].packName = "fedora_xfce_44_1"' "${manifest}.valid" > "${manifest}"
 if "${repository_root}/scripts/verify-fedora-payload.sh" "${fixture_repository}"; then
   echo "Fedora verifier accepted an out-of-order pack" >&2
+  exit 1
+fi
+cp "${manifest}.valid" "${manifest}"
+jq '.workspaceIntegrationVersion = 2' "${manifest}.valid" > "${manifest}"
+if "${repository_root}/scripts/verify-fedora-payload.sh" "${fixture_repository}"; then
+  echo "Fedora verifier accepted a mismatched workspace integration" >&2
+  exit 1
+fi
+cp "${manifest}.valid" "${manifest}"
+jq '.audioHostPackages[0] = "wireplumber-1.6.2-1.fc44.aarch64"' \
+  "${manifest}.valid" > "${manifest}"
+if "${repository_root}/scripts/verify-fedora-payload.sh" "${fixture_repository}"; then
+  echo "Fedora verifier accepted a mismatched audio package identity" >&2
   exit 1
 fi
 cp "${manifest}.valid" "${manifest}"

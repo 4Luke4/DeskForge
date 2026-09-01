@@ -13,6 +13,14 @@ area/ci:
 area/localization:
   - changed-files:
       - any-glob-to-any-file: ["app/src/main/res/values-*/**", "app/src/main/res/xml/locales_config.xml"]
+area/audio:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "config/audio/**"
+          - "config/distros/*session.sh"
+          - "app/src/main/cpp/audio_*"
+          - "app/src/test/cpp/audio_*"
+          - "scripts/*audio*"
 documentation:
   - changed-files:
       - any-glob-to-any-file: ["**/*.md"]

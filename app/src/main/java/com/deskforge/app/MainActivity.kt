@@ -21,6 +21,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.deskforge.app.engine.NativeDeskForgeEngine
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.ClipboardFailure
 import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.RuntimeCapabilities
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
     private val clipboardRenderState = androidx.compose.runtime.mutableStateOf<SessionClipboardState>(
         SessionClipboardState.Unavailable,
     )
+    private val audioRenderState = androidx.compose.runtime.mutableStateOf(SessionAudioState())
     private val rootfsState = androidx.compose.runtime.mutableStateOf<String?>(null)
     private val updateRequiredState = androidx.compose.runtime.mutableStateOf(false)
     private var sessionService: DeskForgeSessionService? = null
@@ -66,6 +68,13 @@ class MainActivity : ComponentActivity() {
     private val downloadConfirmation = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { downloadConfirmationShown = false }
+
+    private val microphonePermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) sessionService?.enableMicrophone()
+        else sessionService?.reportMicrophonePermissionDenied()
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -93,6 +102,11 @@ class MainActivity : ComponentActivity() {
                         if (state is SessionClipboardState.Ready) receiveDesktopClipboard(state.generation)
                     }
                 }
+                launch {
+                    localBinder.service.audioState.collectLatest { state ->
+                        audioRenderState.value = state
+                    }
+                }
             }
             attachCurrentSurface()
         }
@@ -103,6 +117,7 @@ class MainActivity : ComponentActivity() {
             sessionService = null
             serviceBound = false
             clipboardRenderState.value = SessionClipboardState.Unavailable
+            audioRenderState.value = SessionAudioState()
         }
     }
 
@@ -122,6 +137,7 @@ class MainActivity : ComponentActivity() {
                     sessionState = renderState.value,
                     capabilities = capabilityState.value,
                     clipboardState = clipboardRenderState.value,
+                    audioState = audioRenderState.value,
                     isInstalled = rootfsState.value != null,
                     requiresUpdate = updateRequiredState.value,
                     desktopCallbacks = DesktopSurfaceCallbacks(
@@ -140,6 +156,7 @@ class MainActivity : ComponentActivity() {
                     onShowKeyboard = { currentDesktopSurface?.showSoftwareKeyboard() },
                     onPasteToDesktop = ::pasteToDesktop,
                     onCopyFromDesktop = { sessionService?.requestDesktopClipboard() },
+                    onMicrophoneToggle = ::onMicrophoneToggle,
                 )
             }
         }
@@ -156,6 +173,7 @@ class MainActivity : ComponentActivity() {
         serviceBound = false
         sessionService = null
         clipboardRenderState.value = SessionClipboardState.Unavailable
+        audioRenderState.value = SessionAudioState()
         stateCollection?.cancel()
         stateCollection = null
         super.onStop()
@@ -254,6 +272,21 @@ class MainActivity : ComponentActivity() {
             getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
         }.exceptionOrNull()?.let { ClipboardFailure.ANDROID_CLIPBOARD_FAILED }
         service.acknowledgeClipboard(generation, failure)
+    }
+
+    private fun onMicrophoneToggle(enabled: Boolean) {
+        val service = sessionService ?: return
+        if (!enabled) {
+            service.disableMicrophone()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            service.enableMicrophone()
+        } else {
+            microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     private fun applyWorkspaceState(state: WorkspaceState) {

@@ -27,4 +27,13 @@ class DeskForgeAppTest {
         }
         composeRule.onNodeWithText("PRoot").assertIsDisplayed()
     }
+
+    @Test
+    fun settingsExplainSessionScopedMicrophoneConsent() {
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Guest microphone").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Always off at session start. Enable it from the desktop toolbar; consent lasts only until that session ends.",
+        ).assertIsDisplayed()
+    }
 }

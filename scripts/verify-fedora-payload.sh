@@ -10,10 +10,19 @@ test -f "${payload_manifest}"
 
 jq --exit-status --slurpfile distro "${distro_manifest}" '
   $distro[0] as $config |
-  .schemaVersion == 2 and
+  . as $payload |
+  .schemaVersion == 3 and
   .distroId == $config.id and
   .release == $config.release and
   .desktopHostVersion == $config.desktopHost.version and
+  .workspaceIntegrationVersion == $config.workspaceIntegrationVersion and
+  (.audioHostPackages | length) == ($config.audioHost.requiredPackages | length) and
+  all(.audioHostPackages[]; test("^[A-Za-z0-9+_.:-]{1,160}$")) and
+  all(
+    range(0; ($config.audioHost.requiredPackages | length)) as $index |
+    $payload.audioHostPackages[$index] |
+    startswith($config.audioHost.requiredPackages[$index] + "-")
+  ) and
   (.parts | length) > 0 and
   (.parts | length) <= $config.assetDelivery.maximumParts and
   (.parts | length) <= ($config.assetDelivery.packNames | length) and

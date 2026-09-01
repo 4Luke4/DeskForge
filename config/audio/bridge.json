@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "bufferDurationMs": 250,
+  "playbackIdleTimeoutMs": 2000,
+  "playback": {
+    "fileName": "playback.pcm",
+    "format": "s16le",
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "channelMap": "front-left,front-right"
+  },
+  "microphone": {
+    "fileName": "microphone.pcm",
+    "format": "s16le",
+    "sampleRateHz": 48000,
+    "channels": 1,
+    "channelMap": "mono"
+  }
+}

@@ -13,6 +13,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.5.0] - 2026-09-01
+
+### Added
+
+- Local Fedora playback through a bounded private PipeWire-to-AAudio bridge.
+- Permission-gated Android microphone capture with explicit per-session consent and notification control.
+- Audio-focus handling, route recovery diagnostics, and stale-workspace upgrade enforcement.
+
+### Changed
+
+- Fedora workspaces now require the schema-3 audio integration and are upgraded transactionally.
+- The foreground session declares media-playback behavior and adds microphone service ownership only after consent.
+
+### Security
+
+- Microphone samples remain native, are zeroized when capture ends, and are never stored in Kotlin state or logs.
+- Guest audio uses mode-0600 FIFOs inside the existing app-private runtime mount with no network listener.
+- Guest device bindings now exclude Android Binder, raw audio, input, and unrelated host device nodes.
+
+### Known limitations
+
+- Accelerated rendering and physical ARM64 tablet audio qualification remain release blockers.
+- Protected-main emulator, native-speaker translation, legal, and Google Play review remain required.
+
 ## [0.4.0] - 2026-09-01
 
 ### Added
@@ -88,7 +112,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/4Luke4/DeskForge/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/4Luke4/DeskForge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/4Luke4/DeskForge/compare/v0.1.0...v0.2.0

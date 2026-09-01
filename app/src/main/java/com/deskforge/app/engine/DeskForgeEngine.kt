@@ -2,6 +2,7 @@ package com.deskforge.app.engine
 
 import android.view.Surface
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.AudioTransportSnapshot
 import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionState
@@ -33,6 +34,12 @@ interface DeskForgeEngine {
     fun requestClipboardText(): Boolean
 
     fun takeClipboardText(): String?
+
+    fun audioSnapshot(): AudioTransportSnapshot
+
+    fun setPlaybackAudible(enabled: Boolean): Boolean
+
+    fun setMicrophoneCaptureEnabled(enabled: Boolean): Boolean
 
     fun isDisplayConnected(): Boolean
 }

@@ -18,12 +18,12 @@ rm -f "${rfb_socket}" /tmp/.X11-unix/X0
 umask 077
 
 xvnc_pid=
-xfce_pid=
+guest_pid=
 cleanup() {
     trap - EXIT INT TERM
-    [[ -z "${xfce_pid}" ]] || kill "${xfce_pid}" 2>/dev/null || true
+    [[ -z "${guest_pid}" ]] || kill "${guest_pid}" 2>/dev/null || true
     [[ -z "${xvnc_pid}" ]] || kill "${xvnc_pid}" 2>/dev/null || true
-    [[ -z "${xfce_pid}" ]] || wait "${xfce_pid}" 2>/dev/null || true
+    [[ -z "${guest_pid}" ]] || wait "${guest_pid}" 2>/dev/null || true
     [[ -z "${xvnc_pid}" ]] || wait "${xvnc_pid}" 2>/dev/null || true
     rm -f "${rfb_socket}"
 }
@@ -53,11 +53,11 @@ for _ in $(seq 1 200); do
 done
 [[ -S "${rfb_socket}" ]]
 
-DISPLAY=:0 dbus-run-session /usr/bin/startxfce4 &
-xfce_pid=$!
+dbus-run-session /usr/libexec/deskforge/guest-session &
+guest_pid=$!
 
 # Either component ending invalidates the desktop session; the trap reaps its peer.
-while kill -0 "${xvnc_pid}" 2>/dev/null && kill -0 "${xfce_pid}" 2>/dev/null; do
+while kill -0 "${xvnc_pid}" 2>/dev/null && kill -0 "${guest_pid}" 2>/dev/null; do
     sleep 1
 done
 exit 1

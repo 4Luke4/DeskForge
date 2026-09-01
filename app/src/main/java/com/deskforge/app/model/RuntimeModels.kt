@@ -93,6 +93,53 @@ data class ClipboardTransportSnapshot(
     val failure: ClipboardFailure? = null,
 )
 
+enum class AudioPlaybackStatus {
+    UNAVAILABLE,
+    IDLE,
+    WAITING_FOR_FOCUS,
+    PLAYING,
+    FAILED,
+}
+
+enum class AudioMicrophoneStatus {
+    OFF,
+    ACTIVE,
+    FAILED,
+}
+
+enum class AudioFailure {
+    TRANSPORT_UNAVAILABLE,
+    PLAYBACK_OPEN_FAILED,
+    PLAYBACK_DISCONNECTED,
+    AUDIO_FOCUS_DENIED,
+    MICROPHONE_PERMISSION_DENIED,
+    MICROPHONE_PERMISSION_REVOKED,
+    MICROPHONE_OPEN_FAILED,
+    MICROPHONE_DISCONNECTED,
+}
+
+/** Sanitized audio telemetry; audio samples never cross into Kotlin application state. */
+data class AudioTransportSnapshot(
+    val playbackStatus: AudioPlaybackStatus,
+    val microphoneStatus: AudioMicrophoneStatus,
+    val failure: AudioFailure? = null,
+    val outputDeviceId: Int? = null,
+    val inputDeviceId: Int? = null,
+    val underrunCount: Long = 0,
+    val overflowCount: Long = 0,
+)
+
+data class SessionAudioState(
+    val playbackStatus: AudioPlaybackStatus = AudioPlaybackStatus.UNAVAILABLE,
+    val microphoneStatus: AudioMicrophoneStatus = AudioMicrophoneStatus.OFF,
+    val microphoneConsent: Boolean = false,
+    val failure: AudioFailure? = null,
+    val outputDeviceId: Int? = null,
+    val inputDeviceId: Int? = null,
+    val underrunCount: Long = 0,
+    val overflowCount: Long = 0,
+)
+
 /** User-visible clipboard state; clipboard contents deliberately remain outside Compose state. */
 sealed interface SessionClipboardState {
     data object Unavailable : SessionClipboardState
