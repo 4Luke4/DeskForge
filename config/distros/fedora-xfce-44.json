@@ -45,6 +45,7 @@
   },
   "audioHost": {
     "name": "PipeWire PulseAudio bridge",
+    "rpmDatabasePath": "/usr/lib/sysimage/rpm",
     "requiredPackages": [
       "pipewire",
       "pipewire-pulseaudio",

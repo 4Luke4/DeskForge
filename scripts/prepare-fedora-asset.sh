@@ -44,6 +44,7 @@ part_size="$(jq -r '.assetDelivery.partSizeBytes' "${manifest}")"
 maximum_parts="$(jq -r '.assetDelivery.maximumParts' "${manifest}")"
 maximum_archive_size="$(jq -r '.assetDelivery.maximumArchiveSizeBytes' "${manifest}")"
 workspace_integration_version="$(jq -r '.workspaceIntegrationVersion' "${manifest}")"
+rpm_database_path="$(jq -r '.audioHost.rpmDatabasePath' "${manifest}")"
 mapfile -t pack_names < <(jq -r '.assetDelivery.packNames[]' "${manifest}")
 
 rm -rf "${working_directory}"
@@ -145,6 +146,7 @@ fi
 
 audio_packages_json='[]'
 printf 'Recording Fedora audio package identities.\n'
+test -d "${rootfs_directory}${rpm_database_path}"
 mapfile -t required_audio_packages < <(jq -r '.audioHost.requiredPackages[]' "${manifest}")
 mapfile -t required_audio_executables < <(jq -r '.audioHost.requiredExecutables[]' "${manifest}")
 test "${#required_audio_packages[@]}" = "${#required_audio_executables[@]}"
@@ -152,15 +154,21 @@ for index in "${!required_audio_packages[@]}"; do
   package_name="${required_audio_packages[$index]}"
   guest_executable="${required_audio_executables[$index]}"
   printf 'Resolving %s from %s.\n' "${package_name}" "${guest_executable}"
-  # Query the recorded file capability instead of host-stat based --file selection under --root.
-  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" --query --whatprovides \
-    --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${guest_executable}")"; then
-    printf 'The signed Fedora package database does not own %s.\n' "${guest_executable}" >&2
+  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" \
+    --dbpath "${rpm_database_path}" --query \
+    --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${package_name}")"; then
+    printf 'The signed Fedora package database does not contain %s.\n' "${package_name}" >&2
     exit 1
   fi
   if [[ "${package_identity}" != "${package_name}-"* ]]; then
     printf 'Unexpected Fedora package owner for %s: %s\n' \
       "${guest_executable}" "${package_identity}" >&2
+    exit 1
+  fi
+  if ! sudo rpm --root "${rootfs_directory}" --dbpath "${rpm_database_path}" \
+    --query --list "${package_name}" | grep --fixed-strings --line-regexp --quiet "${guest_executable}"; then
+    printf 'Fedora package %s does not own required executable %s.\n' \
+      "${package_name}" "${guest_executable}" >&2
     exit 1
   fi
   audio_packages_json="$(jq --arg identity "${package_identity}" '. + [$identity]' \

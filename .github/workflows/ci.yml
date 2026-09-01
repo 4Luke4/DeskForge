@@ -60,6 +60,7 @@ jobs:
               .url and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)) and
             (.desktopHost.source.sha256 | test("^[a-f0-9]{64}$")) and
             .audioHost.name and
+            .audioHost.rpmDatabasePath == "/usr/lib/sysimage/rpm" and
             .audioHost.requiredPackages == [
               "pipewire", "pipewire-pulseaudio", "wireplumber", "pulseaudio-utils"
             ] and
