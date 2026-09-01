@@ -6,6 +6,8 @@ internal data class FedoraPayloadManifest(
     val distroId: String,
     val release: String,
     val desktopHostVersion: String,
+    val workspaceIntegrationVersion: Int,
+    val audioHostPackages: List<String>,
     val archiveSha256: String,
     val archiveSizeBytes: Long,
     val uncompressedSizeBytes: Long,
@@ -22,11 +24,25 @@ internal data class FedoraPayloadManifest(
         private val digestPattern = Regex("^[a-f0-9]{64}$")
         private val packPattern = Regex("^fedora_xfce_44(?:_[1-3])?$")
         private val partPattern = Regex("^rootfs\\.part[0-3][0-9]$")
+        private val packageIdentityPattern = Regex("^[A-Za-z0-9+_.:-]{1,160}$")
 
         fun parse(json: String): FedoraPayloadManifest {
             require(json.length <= MAX_MANIFEST_CHARACTERS) { "Fedora payload manifest is too large" }
             val root = JSONObject(json)
-            require(root.getInt("schemaVersion") == 2) { "Unsupported Fedora payload manifest" }
+            require(root.getInt("schemaVersion") == 3) { "Unsupported Fedora payload manifest" }
+            val workspaceIntegrationVersion = root.getInt("workspaceIntegrationVersion")
+            require(workspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
+            val audioPackagesJson = root.getJSONArray("audioHostPackages")
+            require(audioPackagesJson.length() in 1..16) { "Invalid Fedora audio package inventory" }
+            val audioHostPackages = buildList(audioPackagesJson.length()) {
+                repeat(audioPackagesJson.length()) { index ->
+                    add(audioPackagesJson.getString(index).also { identity ->
+                        require(packageIdentityPattern.matches(identity)) {
+                            "Invalid Fedora audio package identity"
+                        }
+                    })
+                }
+            }
             val partsJson = root.getJSONArray("parts")
             require(partsJson.length() in 1..4) { "Fedora payload has an invalid part count" }
             val parts = buildList(partsJson.length()) {
@@ -61,6 +77,8 @@ internal data class FedoraPayloadManifest(
                 distroId = root.getString("distroId").also { require(it == "fedora-xfce-44") },
                 release = root.getString("release").also { require(it == "44") },
                 desktopHostVersion = root.getString("desktopHostVersion").also { require(it.isNotBlank()) },
+                workspaceIntegrationVersion = workspaceIntegrationVersion,
+                audioHostPackages = audioHostPackages,
                 archiveSha256 = archiveSha256,
                 archiveSizeBytes = archiveSizeBytes,
                 uncompressedSizeBytes = uncompressedSizeBytes,

@@ -5,7 +5,7 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.4.0 completes tablet text input and explicit plain-text clipboard transfers. It is not
+> Version 0.5.0 adds local Linux playback and explicit per-session microphone integration. It is not
 > approved for production distribution. Physical tablet, translation, Google Play policy, and
 > third-party licensing gates remain mandatory before release.
 
@@ -19,7 +19,7 @@ with a C++ runtime boundary and a separately executed upstream PRoot binary.
 - Rendering: qualified RFB software path; capability-based acceleration remains planned
 - Input: touch, mouse, physical keyboard, and explicitly invoked Android software keyboard
 - Clipboard: manual plain-text transfer in either direction; automatic synchronization is disabled
-- Audio: playback and permission-gated microphone integration remain disabled
+- Audio: PipeWire playback and a permission-gated, per-session microphone bridge
 
 DeskForge-owned code, product integration, design, assets, and documentation are proprietary and
 original. Fedora, PRoot, X.Org, Mesa, and every other third-party component retain their upstream
@@ -59,8 +59,9 @@ secrets only after Play and legal release gates have been approved.
 
 DeskForge is under active initial development. The verified PRoot runtime can now launch an
 interactive Fedora XFCE framebuffer through deterministic multi-pack delivery and an app-private
-RFB transport. A release remains deliberately blocked until post-merge runtime evidence,
-accelerated graphics, audio integration, and physical-device qualification are complete.
+RFB transport, with local playback and explicit microphone consent through private PCM FIFOs. A
+release remains deliberately blocked until post-merge runtime evidence, accelerated graphics, and
+physical-device qualification are complete.
 
 ## License
 

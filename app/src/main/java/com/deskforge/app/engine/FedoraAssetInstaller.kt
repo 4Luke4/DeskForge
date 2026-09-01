@@ -5,6 +5,7 @@ import android.os.StatFs
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
+import com.deskforge.app.BuildConfig
 import com.deskforge.app.model.SessionFailure
 import com.google.android.play.core.assetpacks.AssetPackManager
 import com.google.android.play.core.assetpacks.AssetPackManagerFactory
@@ -28,14 +29,17 @@ class FedoraAssetInstaller(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor(),
 ) {
     private val applicationContext = context.applicationContext
-    private val workspaceStore = FedoraWorkspaceStore(File(applicationContext.filesDir, DISTRO_DIRECTORY))
+    private val workspaceStore = FedoraWorkspaceStore(
+        File(applicationContext.filesDir, DISTRO_DIRECTORY),
+        BuildConfig.FEDORA_WORKSPACE_INTEGRATION_VERSION,
+    )
     private val progressByPack = mutableMapOf<String, Pair<Long, Long>>()
     private var listener: AssetPackStateUpdateListener? = null
     private var installationRunning = false
 
     fun workspaceStatus(): WorkspaceStatus = workspaceStore.activeRootfs()?.let { rootfs ->
         WorkspaceStatus.Installed(rootfs.absolutePath)
-    } ?: if (workspaceStore.legacyUpdateRequired()) {
+    } ?: if (workspaceStore.updateRequired()) {
         WorkspaceStatus.UpdateRequired
     } else {
         WorkspaceStatus.Missing
@@ -93,6 +97,11 @@ class FedoraAssetInstaller(
                 failDownload(onEvent)
                 return true
             }
+        if (manifest.workspaceIntegrationVersion != BuildConfig.FEDORA_WORKSPACE_INTEGRATION_VERSION) {
+            Log.e(TAG, "Fedora payload integration version does not match this application")
+            failDownload(onEvent)
+            return true
+        }
         val parts = manifest.parts.map { part ->
             val assets = manager.getPackLocation(part.packName)?.assetsPath() ?: return false
             File(assets, part.fileName)
@@ -141,17 +150,33 @@ class FedoraAssetInstaller(
                                 require(stagedRootfs.resolve("usr/bin/startxfce4").toFile().isFile)
                                 require(stagedRootfs.resolve("usr/bin/Xvnc").toFile().canExecute())
                                 require(stagedRootfs.resolve("usr/libexec/deskforge/desktop-session").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/libexec/deskforge/guest-session").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/bin/pipewire").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/bin/pipewire-pulse").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/bin/wireplumber").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/bin/pactl").toFile().canExecute())
+                                require(
+                                    stagedRootfs.resolve(
+                                        "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf",
+                                    ).toFile().isFile,
+                                )
                                 val marker = JSONObject()
-                                    .put("schemaVersion", 2)
+                                    .put("schemaVersion", 3)
                                     .put("payloadSha256", archiveSha256)
                                     .put("desktopHostVersion", manifest.desktopHostVersion)
+                                    .put("workspaceIntegrationVersion", manifest.workspaceIntegrationVersion)
+                                    .put("audioHostPackages", manifest.audioHostPackages)
                                 stagedRootfs.resolve(FedoraWorkspaceStore.INSTALL_MARKER).toFile()
                                     .writeText(marker.toString())
                             }
                         }
                     }
                 }
-                workspaceStore.activate(archiveSha256, manifest.desktopHostVersion)
+                workspaceStore.activate(
+                    archiveSha256,
+                    manifest.desktopHostVersion,
+                    manifest.workspaceIntegrationVersion,
+                )
                 onEvent(InstallEvent.Installed(destination.absolutePath))
             } catch (failure: Exception) {
                 Log.e(TAG, "Fedora workspace installation failed", failure)

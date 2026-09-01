@@ -70,6 +70,17 @@ internal class ProotRuntimeStorage(private val directory: File) {
         directory.setReadable(true, true)
         directory.setWritable(true, true)
         directory.setExecutable(true, true)
+        File(directory, PRIVATE_SHARED_MEMORY_DIRECTORY).also { sharedMemory ->
+            if (!sharedMemory.mkdir() || Files.isSymbolicLink(sharedMemory.toPath())) {
+                throw IllegalStateException("Unable to create private guest shared memory")
+            }
+            sharedMemory.setReadable(false, false)
+            sharedMemory.setWritable(false, false)
+            sharedMemory.setExecutable(false, false)
+            sharedMemory.setReadable(true, true)
+            sharedMemory.setWritable(true, true)
+            sharedMemory.setExecutable(true, true)
+        }
         directory.canonicalFile
     } catch (failure: IOException) {
         throw IllegalStateException("Unable to prepare the PRoot temporary directory", failure)
@@ -108,5 +119,9 @@ internal class ProotRuntimeStorage(private val directory: File) {
                 }
             },
         )
+    }
+
+    private companion object {
+        const val PRIVATE_SHARED_MEMORY_DIRECTORY = "dev-shm"
     }
 }

@@ -24,9 +24,15 @@ guest_is_executable() {
   local path="$1"
   local mode
 
-  test -f "${path}"
+  if ! test -f "${path}"; then
+    printf 'Required guest executable is missing: %s\n' "${path}" >&2
+    return 1
+  fi
   mode="$(stat --format='%a' "${path}")"
-  (( (8#${mode} & 8#111) != 0 ))
+  if (( (8#${mode} & 8#111) == 0 )); then
+    printf 'Required guest file is not executable: %s (mode %s)\n' "${path}" "${mode}" >&2
+    return 1
+  fi
 }
 
 image_url="$(jq -r '.imageUrl' "${manifest}")"
@@ -37,6 +43,8 @@ checksum_url="$(jq -r '.checksumUrl' "${manifest}")"
 part_size="$(jq -r '.assetDelivery.partSizeBytes' "${manifest}")"
 maximum_parts="$(jq -r '.assetDelivery.maximumParts' "${manifest}")"
 maximum_archive_size="$(jq -r '.assetDelivery.maximumArchiveSizeBytes' "${manifest}")"
+workspace_integration_version="$(jq -r '.workspaceIntegrationVersion' "${manifest}")"
+rpm_database_path="$(jq -r '.audioHost.rpmDatabasePath' "${manifest}")"
 mapfile -t pack_names < <(jq -r '.assetDelivery.packNames[]' "${manifest}")
 
 rm -rf "${working_directory}"
@@ -105,14 +113,72 @@ rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${source_path}" | grep
 sudo install -D --mode=0755 \
   "${repository_root}/config/distros/desktop-session.sh" \
   "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
+sudo install -D --mode=0755 \
+  "${repository_root}/config/distros/guest-session.sh" \
+  "${rootfs_directory}/usr/libexec/deskforge/guest-session"
+audio_config_path="${working_directory}/deskforge-audio.conf"
+"${repository_root}/scripts/render-pipewire-audio-config.sh" "${audio_config_path}"
+sudo install -D --mode=0644 \
+  "${audio_config_path}" \
+  "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+printf 'DeskForge guest audio configuration staged.\n'
 guest_is_executable "${rootfs_directory}/usr/bin/Xvnc"
 guest_is_executable "${rootfs_directory}/usr/bin/startxfce4"
 guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
+guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/guest-session"
 for guest_executable in env bash dbus-run-session mkdir chmod rm seq sleep; do
   guest_is_executable "${rootfs_directory}/usr/bin/${guest_executable}"
 done
+while IFS= read -r guest_executable; do
+  guest_is_executable "${rootfs_directory}${guest_executable}"
+done < <(jq -r '.audioHost.requiredExecutables[]' "${manifest}")
+test -f "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+test ! -L "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+grep --fixed-strings --quiet 'module-pipe-sink' \
+  "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+grep --fixed-strings --quiet 'module-pipe-source' \
+  "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+if grep --extended-regexp --quiet 'tcp:|server.address|native-protocol-tcp' \
+  "${rootfs_directory}/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"; then
+  echo "DeskForge audio configuration must not expose a network transport" >&2
+  exit 1
+fi
+
+audio_packages_json='[]'
+printf 'Recording Fedora audio package identities.\n'
+test -d "${rootfs_directory}${rpm_database_path}"
+mapfile -t required_audio_packages < <(jq -r '.audioHost.requiredPackages[]' "${manifest}")
+mapfile -t required_audio_executables < <(jq -r '.audioHost.requiredExecutables[]' "${manifest}")
+test "${#required_audio_packages[@]}" = "${#required_audio_executables[@]}"
+for index in "${!required_audio_packages[@]}"; do
+  package_name="${required_audio_packages[$index]}"
+  guest_executable="${required_audio_executables[$index]}"
+  printf 'Resolving %s from %s.\n' "${package_name}" "${guest_executable}"
+  if ! package_identity="$(sudo rpm --root "${rootfs_directory}" \
+    --dbpath "${rpm_database_path}" --query \
+    --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${package_name}")"; then
+    printf 'The signed Fedora package database does not contain %s.\n' "${package_name}" >&2
+    exit 1
+  fi
+  if [[ "${package_identity}" != "${package_name}-"* ]]; then
+    printf 'Unexpected Fedora package owner for %s: %s\n' \
+      "${guest_executable}" "${package_identity}" >&2
+    exit 1
+  fi
+  if ! sudo rpm --root "${rootfs_directory}" --dbpath "${rpm_database_path}" \
+    --query --list "${package_name}" | grep --fixed-strings --line-regexp --quiet "${guest_executable}"; then
+    printf 'Fedora package %s does not own required executable %s.\n' \
+      "${package_name}" "${guest_executable}" >&2
+    exit 1
+  fi
+  audio_packages_json="$(jq --arg identity "${package_identity}" '. + [$identity]' \
+    <<<"${audio_packages_json}")"
+done
+jq -r '.[]' <<<"${audio_packages_json}" > "${source_output}/fedora-audio-packages.txt"
+printf 'Recorded %s Fedora audio package identities.\n' \
+  "$(jq 'length' <<<"${audio_packages_json}")"
 while read -r library; do
-  find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
+  sudo find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
     -name "${library}" -print -quit | grep --quiet .
 done < <(readelf --dynamic "${rootfs_directory}/usr/bin/Xvnc" | \
   sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p')
@@ -168,15 +234,19 @@ jq --null-input \
   --arg distroId "$(jq -r '.id' "${manifest}")" \
   --arg release "$(jq -r '.release' "${manifest}")" \
   --arg desktopHostVersion "$(jq -r '.desktopHost.version' "${manifest}")" \
+  --argjson workspaceIntegrationVersion "${workspace_integration_version}" \
+  --argjson audioHostPackages "${audio_packages_json}" \
   --arg archiveSha256 "${archive_sha256}" \
   --argjson archiveSizeBytes "${archive_size}" \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   --argjson parts "${parts_json}" \
   '{
-    schemaVersion: 2,
+    schemaVersion: 3,
     distroId: $distroId,
     release: $release,
     desktopHostVersion: $desktopHostVersion,
+    workspaceIntegrationVersion: $workspaceIntegrationVersion,
+    audioHostPackages: $audioHostPackages,
     archiveSha256: $archiveSha256,
     archiveSizeBytes: $archiveSizeBytes,
     uncompressedSizeBytes: $uncompressedSizeBytes,

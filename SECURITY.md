@@ -3,12 +3,12 @@
 ## Supported versions
 
 DeskForge has not reached a production release. Security fixes are currently provided only for the
-latest `0.4.x` development line.
+latest `0.5.x` development line.
 
 | Version | Supported |
 | --- | --- |
-| 0.4.x | Yes |
-| 0.3.x | No |
+| 0.5.x | Yes |
+| 0.4.x | No |
 | Earlier or unreleased snapshots | No |
 
 ## Reporting a vulnerability

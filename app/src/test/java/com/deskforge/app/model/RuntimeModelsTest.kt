@@ -1,6 +1,7 @@
 package com.deskforge.app.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -33,5 +34,14 @@ class RuntimeModelsTest {
     @Test(expected = IllegalArgumentException::class)
     fun `desktop viewport rejects an oversized framebuffer`() {
         DesktopViewport(widthPx = 4097, heightPx = 4096, densityDpi = 320)
+    }
+
+    @Test
+    fun `audio session starts without microphone consent`() {
+        val state = SessionAudioState()
+
+        assertEquals(AudioPlaybackStatus.UNAVAILABLE, state.playbackStatus)
+        assertEquals(AudioMicrophoneStatus.OFF, state.microphoneStatus)
+        assertFalse(state.microphoneConsent)
     }
 }

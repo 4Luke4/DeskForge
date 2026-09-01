@@ -37,3 +37,10 @@ with or endorsed by the Fedora Project or XFCE project.
 - License: GPL-2.0-or-later with separately identified X.Org and other component terms
 - Integration: separately executed `Xvnc` inside the Fedora guest; no TigerVNC code is linked into DeskForge
 - Source: exact Fedora source RPM retained with every prepared payload and release candidate
+
+## PipeWire and WirePlumber
+
+- Projects: <https://pipewire.org/> and <https://pipewire.pages.freedesktop.org/wireplumber/>
+- Integration: separately executed Fedora guest services; no PipeWire or WirePlumber code is linked into DeskForge
+- Transport: built-in PipeWire Pulse pipe modules over app-private PCM FIFOs
+- Source and licensing: exact package identities are retained with the payload; the verified Fedora image and release SBOM remain authoritative

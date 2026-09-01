@@ -55,6 +55,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.R
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.AudioFailure
+import com.deskforge.app.model.AudioMicrophoneStatus
+import com.deskforge.app.model.AudioPlaybackStatus
+import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.ClipboardFailure
 import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.RuntimeCapabilities
@@ -68,6 +72,7 @@ fun DeskForgeApp(
     sessionState: SessionState,
     capabilities: RuntimeCapabilities?,
     clipboardState: SessionClipboardState,
+    audioState: SessionAudioState,
     isInstalled: Boolean,
     requiresUpdate: Boolean,
     desktopCallbacks: DesktopSurfaceCallbacks,
@@ -78,15 +83,18 @@ fun DeskForgeApp(
     onShowKeyboard: () -> Unit,
     onPasteToDesktop: () -> Unit,
     onCopyFromDesktop: () -> Unit,
+    onMicrophoneToggle: (Boolean) -> Unit,
 ) {
     if (sessionState is SessionState.Starting || sessionState is SessionState.Running || sessionState is SessionState.Stopping) {
         DesktopSessionScreen(
             sessionState,
             clipboardState,
+            audioState,
             onStop,
             onShowKeyboard,
             onPasteToDesktop,
             onCopyFromDesktop,
+            onMicrophoneToggle,
             desktopCallbacks,
         )
         return
@@ -276,11 +284,10 @@ private fun SettingsScreen() {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.microphone_label), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        stringResource(R.string.microphone_unavailable_summary),
+                        stringResource(R.string.microphone_session_summary),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = false, onCheckedChange = null, enabled = false)
             }
         }
     }
@@ -291,10 +298,12 @@ private fun SettingsScreen() {
 private fun DesktopSessionScreen(
     state: SessionState,
     clipboardState: SessionClipboardState,
+    audioState: SessionAudioState,
     onStop: () -> Unit,
     onShowKeyboard: () -> Unit,
     onPasteToDesktop: () -> Unit,
     onCopyFromDesktop: () -> Unit,
+    onMicrophoneToggle: (Boolean) -> Unit,
     callbacks: DesktopSurfaceCallbacks,
 ) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -345,6 +354,32 @@ private fun DesktopSessionScreen(
                 ) {
                     Text(stringResource(R.string.action_copy_from_desktop))
                 }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val microphoneLabel = stringResource(R.string.microphone_label)
+                    Text(microphoneLabel)
+                    Switch(
+                        checked = audioState.microphoneConsent,
+                        onCheckedChange = onMicrophoneToggle,
+                        modifier = Modifier.semantics { contentDescription = microphoneLabel },
+                    )
+                }
+                Text(
+                    audioStatusLabel(audioState),
+                    modifier = Modifier.align(Alignment.CenterVertically).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                    color = if (audioState.failure != null ||
+                        audioState.microphoneStatus == AudioMicrophoneStatus.FAILED ||
+                        audioState.playbackStatus == AudioPlaybackStatus.FAILED
+                    ) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
                 Text(
                     clipboardStatusLabel(clipboardState),
                     modifier = Modifier.align(Alignment.CenterVertically).semantics {
@@ -373,6 +408,37 @@ private fun clipboardCanCopyFromDesktop(state: SessionClipboardState): Boolean =
     is SessionClipboardState.Idle -> state.remoteTextAvailable
     is SessionClipboardState.Failed -> state.remoteTextAvailable
     else -> false
+}
+
+@Composable
+private fun audioStatusLabel(state: SessionAudioState): String {
+    val failure = state.failure
+    if (failure != null) {
+        return stringResource(
+            when (failure) {
+                AudioFailure.TRANSPORT_UNAVAILABLE -> R.string.audio_error_transport
+                AudioFailure.PLAYBACK_OPEN_FAILED,
+                AudioFailure.PLAYBACK_DISCONNECTED -> R.string.audio_error_playback
+                AudioFailure.AUDIO_FOCUS_DENIED -> R.string.audio_error_focus
+                AudioFailure.MICROPHONE_PERMISSION_DENIED -> R.string.microphone_error_permission
+                AudioFailure.MICROPHONE_PERMISSION_REVOKED -> R.string.microphone_error_revoked
+                AudioFailure.MICROPHONE_OPEN_FAILED,
+                AudioFailure.MICROPHONE_DISCONNECTED -> R.string.microphone_error_start
+            },
+        )
+    }
+    if (state.microphoneStatus == AudioMicrophoneStatus.ACTIVE) {
+        return stringResource(R.string.microphone_active)
+    }
+    return stringResource(
+        when (state.playbackStatus) {
+            AudioPlaybackStatus.PLAYING -> R.string.audio_playing
+            AudioPlaybackStatus.WAITING_FOR_FOCUS -> R.string.audio_waiting_focus
+            AudioPlaybackStatus.FAILED -> R.string.audio_error_playback
+            AudioPlaybackStatus.UNAVAILABLE -> R.string.audio_unavailable
+            AudioPlaybackStatus.IDLE -> R.string.audio_ready
+        },
+    )
 }
 
 @Composable

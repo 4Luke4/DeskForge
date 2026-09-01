@@ -56,6 +56,8 @@ class ProotRuntimeTest {
         assertTrue(prepared.isDirectory)
         assertFalse(staleDirectory.exists())
         assertTrue(outside.isFile)
+        assertTrue(File(prepared, "dev-shm").isDirectory)
+        assertFalse(Files.isSymbolicLink(File(prepared, "dev-shm").toPath()))
     }
 
     private fun executableWith(content: String): File =

@@ -1,0 +1,21 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+
+namespace audio_config {
+
+inline constexpr char kPlaybackFileName[] = "@AUDIO_PLAYBACK_FILE@";
+inline constexpr char kMicrophoneFileName[] = "@AUDIO_MICROPHONE_FILE@";
+inline constexpr int32_t kPlaybackSampleRate = @AUDIO_PLAYBACK_RATE@;
+inline constexpr int32_t kPlaybackChannels = @AUDIO_PLAYBACK_CHANNELS@;
+inline constexpr int32_t kMicrophoneSampleRate = @AUDIO_MICROPHONE_RATE@;
+inline constexpr int32_t kMicrophoneChannels = @AUDIO_MICROPHONE_CHANNELS@;
+inline constexpr int32_t kBufferDurationMs = @AUDIO_BUFFER_DURATION_MS@;
+inline constexpr int32_t kPlaybackIdleTimeoutMs = @AUDIO_IDLE_TIMEOUT_MS@;
+inline constexpr size_t kPlaybackBufferSamples =
+    static_cast<size_t>(kPlaybackSampleRate) * kPlaybackChannels * kBufferDurationMs / 1000U;
+inline constexpr size_t kMicrophoneBufferSamples =
+    static_cast<size_t>(kMicrophoneSampleRate) * kMicrophoneChannels * kBufferDurationMs / 1000U;
+
+}  // namespace audio_config

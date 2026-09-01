@@ -4,6 +4,10 @@ import android.content.Context
 import android.view.Surface
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.AudioFailure
+import com.deskforge.app.model.AudioMicrophoneStatus
+import com.deskforge.app.model.AudioPlaybackStatus
+import com.deskforge.app.model.AudioTransportSnapshot
 import com.deskforge.app.model.ClipboardFailure
 import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.ClipboardTransportStatus
@@ -150,6 +154,34 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         }.getOrNull()
     }
 
+    override fun audioSnapshot(): AudioTransportSnapshot {
+        val values = nativeAudioSnapshot()
+        val failure = when (values.getOrNull(2)?.toInt() ?: 0) {
+            1 -> AudioFailure.TRANSPORT_UNAVAILABLE
+            2 -> AudioFailure.PLAYBACK_OPEN_FAILED
+            3 -> AudioFailure.PLAYBACK_DISCONNECTED
+            4 -> AudioFailure.MICROPHONE_OPEN_FAILED
+            5 -> AudioFailure.MICROPHONE_DISCONNECTED
+            else -> null
+        }
+        return AudioTransportSnapshot(
+            playbackStatus = values.getOrNull(0)?.toInt()?.let { AudioPlaybackStatus.entries.getOrNull(it) }
+                ?: AudioPlaybackStatus.UNAVAILABLE,
+            microphoneStatus = values.getOrNull(1)?.toInt()?.let { AudioMicrophoneStatus.entries.getOrNull(it) }
+                ?: AudioMicrophoneStatus.OFF,
+            failure = failure,
+            outputDeviceId = values.getOrNull(3)?.toInt()?.takeUnless { it == 0 },
+            inputDeviceId = values.getOrNull(4)?.toInt()?.takeUnless { it == 0 },
+            underrunCount = values.getOrNull(5)?.coerceAtLeast(0) ?: 0,
+            overflowCount = values.getOrNull(6)?.coerceAtLeast(0) ?: 0,
+        )
+    }
+
+    override fun setPlaybackAudible(enabled: Boolean): Boolean = nativeSetPlaybackAudible(enabled)
+
+    override fun setMicrophoneCaptureEnabled(enabled: Boolean): Boolean =
+        nativeSetMicrophoneEnabled(enabled)
+
     override fun isDisplayConnected(): Boolean = nativeDisplayConnected()
 
     /** Restores UI ownership of a native session after an Android configuration change. */
@@ -215,6 +247,12 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     private external fun nativeRequestClipboardText(): Boolean
 
     private external fun nativeTakeClipboardText(): ByteArray?
+
+    private external fun nativeAudioSnapshot(): LongArray
+
+    private external fun nativeSetPlaybackAudible(enabled: Boolean): Boolean
+
+    private external fun nativeSetMicrophoneEnabled(enabled: Boolean): Boolean
 
     private external fun nativeDisplayConnected(): Boolean
 

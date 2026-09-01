@@ -8,7 +8,10 @@ import java.nio.file.StandardCopyOption
 import org.json.JSONObject
 
 /** Atomically selects a complete immutable workspace before retiring the previous installation. */
-internal class FedoraWorkspaceStore(private val distroDirectory: File) {
+internal class FedoraWorkspaceStore(
+    private val distroDirectory: File,
+    private val expectedIntegrationVersion: Int,
+) {
     private val installationsDirectory = File(distroDirectory, "installations")
     private val activeFile = File(distroDirectory, "active.json")
     private val legacyRootfs = File(distroDirectory, "rootfs")
@@ -22,15 +25,28 @@ internal class FedoraWorkspaceStore(private val distroDirectory: File) {
         }
         return runCatching {
             val active = JSONObject(activeFile.readText())
-            require(active.getInt("schemaVersion") == 1)
+            require(active.getInt("schemaVersion") == 2)
+            require(active.getInt("workspaceIntegrationVersion") == expectedIntegrationVersion)
             val digest = active.getString("payloadSha256")
             require(DIGEST_PATTERN.matches(digest))
-            installationRootfs(digest).takeIf(::isLaunchable)
+            installationRootfs(digest).takeIf { rootfs -> isLaunchable(rootfs, digest) }
         }.getOrNull()
     }
 
-    fun legacyUpdateRequired(): Boolean =
-        trustedControlDirectories() && isLegacyLaunchable(legacyRootfs) && activeRootfs() == null
+    fun updateRequired(): Boolean {
+        if (!trustedControlDirectories() || activeRootfs() != null) return false
+        if (isLegacyLaunchable(legacyRootfs)) return true
+        if (!Files.isRegularFile(activeFile.toPath(), LinkOption.NOFOLLOW_LINKS) ||
+            activeFile.length() > MAX_ACTIVE_FILE_BYTES
+        ) {
+            return false
+        }
+        return runCatching {
+            val active = JSONObject(activeFile.readText())
+            val digest = active.getString("payloadSha256")
+            DIGEST_PATTERN.matches(digest) && isLegacyIntegrationLaunchable(installationRootfs(digest))
+        }.getOrDefault(false)
+    }
 
     fun destination(payloadSha256: String): File {
         require(DIGEST_PATTERN.matches(payloadSha256))
@@ -39,16 +55,18 @@ internal class FedoraWorkspaceStore(private val distroDirectory: File) {
         return installationRootfs(payloadSha256)
     }
 
-    fun activate(payloadSha256: String, desktopHostVersion: String) {
+    fun activate(payloadSha256: String, desktopHostVersion: String, integrationVersion: Int) {
         require(trustedControlDirectories()) { "The Fedora workspace directory is not trustworthy" }
+        require(integrationVersion == expectedIntegrationVersion)
         val rootfs = installationRootfs(payloadSha256)
-        require(isLaunchable(rootfs)) { "The prepared Fedora workspace is incomplete" }
+        require(isLaunchable(rootfs, payloadSha256)) { "The prepared Fedora workspace is incomplete" }
         Files.createDirectories(distroDirectory.toPath())
         val temporary = File(distroDirectory, ".active-${System.nanoTime()}.json")
         val declaration = JSONObject()
-            .put("schemaVersion", 1)
+            .put("schemaVersion", 2)
             .put("payloadSha256", payloadSha256)
             .put("desktopHostVersion", desktopHostVersion)
+            .put("workspaceIntegrationVersion", integrationVersion)
             .toString()
         java.io.FileOutputStream(temporary).use { fileOutput ->
             val output = BufferedOutputStream(fileOutput)
@@ -75,12 +93,38 @@ internal class FedoraWorkspaceStore(private val distroDirectory: File) {
 
     private fun installationRootfs(digest: String) = File(installationsDirectory, "$digest/rootfs")
 
-    private fun isLaunchable(rootfs: File): Boolean =
+    private fun isLaunchable(rootfs: File, payloadSha256: String): Boolean =
         rootfs.isDirectory &&
             File(rootfs, "usr/bin/startxfce4").isFile &&
             File(rootfs, "usr/bin/Xvnc").canExecute() &&
             File(rootfs, "usr/libexec/deskforge/desktop-session").canExecute() &&
-            File(rootfs, INSTALL_MARKER).isFile
+            File(rootfs, "usr/libexec/deskforge/guest-session").canExecute() &&
+            File(rootfs, "usr/bin/pipewire").canExecute() &&
+            File(rootfs, "usr/bin/pipewire-pulse").canExecute() &&
+            File(rootfs, "usr/bin/wireplumber").canExecute() &&
+            File(rootfs, "usr/bin/pactl").canExecute() &&
+            File(rootfs, "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf").isFile &&
+            installMarkerMatches(rootfs, payloadSha256)
+
+    private fun installMarkerMatches(rootfs: File, payloadSha256: String): Boolean {
+        val marker = File(rootfs, INSTALL_MARKER)
+        if (!Files.isRegularFile(marker.toPath(), LinkOption.NOFOLLOW_LINKS) ||
+            marker.length() > MAX_INSTALL_MARKER_BYTES
+        ) {
+            return false
+        }
+        return runCatching {
+            val declaration = JSONObject(marker.readText())
+            declaration.getInt("schemaVersion") == 3 &&
+                declaration.getString("payloadSha256") == payloadSha256 &&
+                declaration.getInt("workspaceIntegrationVersion") == expectedIntegrationVersion
+        }.getOrDefault(false)
+    }
+
+    private fun isLegacyIntegrationLaunchable(rootfs: File): Boolean =
+        rootfs.isDirectory && File(rootfs, "usr/bin/startxfce4").isFile &&
+            File(rootfs, "usr/bin/Xvnc").canExecute() &&
+            File(rootfs, "usr/libexec/deskforge/desktop-session").canExecute()
 
     private fun isLegacyLaunchable(rootfs: File): Boolean =
         rootfs.isDirectory && File(rootfs, "usr/bin/startxfce4").isFile &&
@@ -103,6 +147,7 @@ internal class FedoraWorkspaceStore(private val distroDirectory: File) {
     companion object {
         const val INSTALL_MARKER = ".deskforge-install.json"
         private const val MAX_ACTIVE_FILE_BYTES = 4096L
+        private const val MAX_INSTALL_MARKER_BYTES = 8192L
         private val DIGEST_PATTERN = Regex("^[a-f0-9]{64}$")
     }
 }

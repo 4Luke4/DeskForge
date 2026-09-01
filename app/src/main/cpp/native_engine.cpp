@@ -21,6 +21,7 @@
 
 #include "rfb_client.h"
 #include "rfb_clipboard.h"
+#include "audio_bridge.h"
 
 namespace {
 
@@ -29,6 +30,7 @@ std::mutex g_session_mutex;
 pid_t g_session_pid = -1;
 std::string g_last_error;
 std::unique_ptr<RfbClient> g_rfb_client;
+std::unique_ptr<AudioBridge> g_audio_bridge;
 
 bool is_regular_executable(const char* path) {
     struct stat file_status {};
@@ -78,6 +80,10 @@ pid_t active_session_pid() {
         if (g_rfb_client != nullptr) {
             g_rfb_client->stop();
             g_rfb_client.reset();
+        }
+        if (g_audio_bridge != nullptr) {
+            g_audio_bridge->stop();
+            g_audio_bridge.reset();
         }
     }
     return g_session_pid;
@@ -142,10 +148,21 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         set_error("The PRoot temporary directory is unavailable");
         return -1;
     }
+    const std::string shared_memory_path = runtime_directory_path + "/dev-shm";
+    if (!is_directory(shared_memory_path.c_str())) {
+        set_error("The private guest shared-memory directory is unavailable");
+        return -1;
+    }
     if (surface == nullptr || viewport_width < 640 || viewport_width > 4096 ||
         viewport_height < 480 || viewport_height > 4096 || density_dpi < 120 || density_dpi > 640 ||
         static_cast<int64_t>(viewport_width) * viewport_height > 16'777'216) {
         set_error("The desktop viewport is invalid");
+        return -1;
+    }
+
+    auto audio_bridge = std::make_unique<AudioBridge>();
+    if (!audio_bridge->prepare(runtime_directory_path)) {
+        set_error(audio_bridge->last_error());
         return -1;
     }
 
@@ -184,6 +201,7 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
             _exit(125);
         }
         const std::string runtime_bind = runtime_directory_path + ":/run/deskforge";
+        const std::string shared_memory_bind = shared_memory_path + ":/dev/shm";
         const std::string width = std::to_string(viewport_width);
         const std::string height = std::to_string(viewport_height);
         const std::string dpi = std::to_string(density_dpi);
@@ -194,8 +212,21 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
             "-0",
             "-r",
             rootfs_path.c_str(),
+            // Do not expose Binder, raw audio, input, or other Android device nodes to guest code.
             "-b",
-            "/dev",
+            "/dev/null",
+            "-b",
+            "/dev/zero",
+            "-b",
+            "/dev/random",
+            "-b",
+            "/dev/urandom",
+            "-b",
+            "/dev/ptmx",
+            "-b",
+            "/dev/pts",
+            "-b",
+            shared_memory_bind.c_str(),
             "-b",
             "/proc",
             "-b",
@@ -235,12 +266,25 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         return -1;
     }
 
+    if (!audio_bridge->start()) {
+        const std::string audio_error = audio_bridge->last_error();
+        audio_bridge->stop();
+        kill(-child, SIGKILL);
+        int status = 0;
+        while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+            // Reap the guest when its private host audio transport cannot start.
+        }
+        set_error(audio_error.empty() ? "Unable to start the private audio bridge" : audio_error);
+        return -1;
+    }
+
     const std::string rfb_socket = runtime_directory_path + "/rfb.sock";
     auto rfb_client = std::make_unique<RfbClient>();
     if (!rfb_client->connect_and_start(
             environment, surface, rfb_socket, viewport_width, viewport_height)) {
         const std::string display_error = rfb_client->last_error();
         rfb_client->stop();
+        audio_bridge->stop();
         kill(-child, SIGKILL);
         int status = 0;
         while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
@@ -251,6 +295,7 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     }
 
     g_rfb_client = std::move(rfb_client);
+    g_audio_bridge = std::move(audio_bridge);
     g_session_pid = child;
     g_last_error.clear();
     return static_cast<jint>(child);
@@ -265,6 +310,11 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStop(JNIEnv*, jobject)
     }
 
     const pid_t process_id = g_session_pid;
+    if (g_audio_bridge != nullptr) {
+        // Stop capture before guest teardown so no microphone sample outlives consent.
+        g_audio_bridge->stop();
+        g_audio_bridge.reset();
+    }
     if (g_rfb_client != nullptr) {
         g_rfb_client->stop();
         g_rfb_client.reset();
@@ -430,6 +480,58 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeDisplayConnected(JNIEnv*, jobject) {
     std::lock_guard<std::mutex> lock(g_session_mutex);
     return g_rfb_client != nullptr && g_rfb_client->connected() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jlongArray JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeAudioSnapshot(
+    JNIEnv* environment, jobject) {
+    AudioBridgeSnapshot snapshot{
+        AudioPlaybackStatus::Unavailable,
+        AudioMicrophoneStatus::Off,
+        AudioBridgeFailure::None,
+        AAUDIO_UNSPECIFIED,
+        AAUDIO_UNSPECIFIED,
+        0,
+        0,
+    };
+    {
+        std::lock_guard<std::mutex> lock(g_session_mutex);
+        if (g_audio_bridge != nullptr) snapshot = g_audio_bridge->snapshot();
+    }
+    const std::array<jlong, 7> values{
+        static_cast<jlong>(snapshot.playback_status),
+        static_cast<jlong>(snapshot.microphone_status),
+        static_cast<jlong>(snapshot.failure),
+        static_cast<jlong>(snapshot.output_device_id),
+        static_cast<jlong>(snapshot.input_device_id),
+        static_cast<jlong>(snapshot.underrun_count),
+        static_cast<jlong>(snapshot.overflow_count),
+    };
+    jlongArray result = environment->NewLongArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        environment->SetLongArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSetPlaybackAudible(
+    JNIEnv*, jobject, jboolean enabled) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_audio_bridge != nullptr &&
+        g_audio_bridge->set_playback_audible(enabled == JNI_TRUE)
+        ? JNI_TRUE
+        : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeSetMicrophoneEnabled(
+    JNIEnv*, jobject, jboolean enabled) {
+    std::lock_guard<std::mutex> lock(g_session_mutex);
+    return g_audio_bridge != nullptr &&
+        g_audio_bridge->set_microphone_enabled(enabled == JNI_TRUE)
+        ? JNI_TRUE
+        : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jint JNICALL

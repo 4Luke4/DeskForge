@@ -16,18 +16,29 @@ class FedoraWorkspaceStoreTest {
     fun activatesCompleteWorkspaceByDigest() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val directory = File(context.cacheDir, "workspace-store-${System.nanoTime()}")
-        val store = FedoraWorkspaceStore(directory)
+        val store = FedoraWorkspaceStore(directory, INTEGRATION_VERSION)
         val digest = "a".repeat(64)
         val rootfs = store.destination(digest)
         executable(rootfs, "usr/bin/startxfce4")
         executable(rootfs, "usr/bin/Xvnc")
         executable(rootfs, "usr/libexec/deskforge/desktop-session")
+        executable(rootfs, "usr/libexec/deskforge/guest-session")
+        executable(rootfs, "usr/bin/pipewire")
+        executable(rootfs, "usr/bin/pipewire-pulse")
+        executable(rootfs, "usr/bin/wireplumber")
+        executable(rootfs, "usr/bin/pactl")
+        File(rootfs, "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf").apply {
+            parentFile?.mkdirs()
+            writeText("audio")
+        }
         File(rootfs, FedoraWorkspaceStore.INSTALL_MARKER).apply {
             parentFile?.mkdirs()
-            writeText("{}")
+            writeText(
+                """{"schemaVersion":3,"payloadSha256":"$digest","workspaceIntegrationVersion":1}""",
+            )
         }
 
-        store.activate(digest, "1.16.2-4.fc44")
+        store.activate(digest, "1.16.2-4.fc44", INTEGRATION_VERSION)
 
         assertEquals(rootfs.canonicalFile, store.activeRootfs()?.canonicalFile)
         directory.deleteRecursively()
@@ -43,7 +54,25 @@ class FedoraWorkspaceStoreTest {
             writeText("legacy")
         }
 
-        assertTrue(FedoraWorkspaceStore(directory).legacyUpdateRequired())
+        assertTrue(FedoraWorkspaceStore(directory, INTEGRATION_VERSION).updateRequired())
+        directory.deleteRecursively()
+    }
+
+    @Test
+    fun recognizesPreviousIntegrationAsUpdateRequired() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val directory = File(context.cacheDir, "workspace-previous-${System.nanoTime()}")
+        val store = FedoraWorkspaceStore(directory, INTEGRATION_VERSION)
+        val digest = "b".repeat(64)
+        val rootfs = store.destination(digest)
+        executable(rootfs, "usr/bin/startxfce4")
+        executable(rootfs, "usr/bin/Xvnc")
+        executable(rootfs, "usr/libexec/deskforge/desktop-session")
+        File(directory, "active.json").writeText(
+            """{"schemaVersion":1,"payloadSha256":"$digest","desktopHostVersion":"1.16.2-4.fc44"}""",
+        )
+
+        assertTrue(store.updateRequired())
         directory.deleteRecursively()
     }
 
@@ -55,7 +84,7 @@ class FedoraWorkspaceStoreTest {
         Files.createSymbolicLink(File(directory, "installations").toPath(), externalTarget.toPath())
 
         try {
-            FedoraWorkspaceStore(directory).destination("a".repeat(64))
+            FedoraWorkspaceStore(directory, INTEGRATION_VERSION).destination("a".repeat(64))
         } finally {
             File(directory, "installations").delete()
             directory.delete()
@@ -69,5 +98,9 @@ class FedoraWorkspaceStoreTest {
             writeText("fixture")
             setExecutable(true)
         }
+    }
+
+    private companion object {
+        const val INTEGRATION_VERSION = 1
     }
 }

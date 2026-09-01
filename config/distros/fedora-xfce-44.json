@@ -1,5 +1,6 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
+  "workspaceIntegrationVersion": 1,
   "id": "fedora-xfce-44",
   "displayName": "Fedora XFCE 44",
   "release": "44",
@@ -41,6 +42,24 @@
       "sizeBytes": 2319507,
       "sha256": "cbb92d32014b3f2f93805c684416099646ca87cdd622002e28f554ef77e36e0e"
     }
+  },
+  "audioHost": {
+    "name": "PipeWire PulseAudio bridge",
+    "rpmDatabasePath": "/usr/lib/sysimage/rpm",
+    "requiredPackages": [
+      "pipewire",
+      "pipewire-pulseaudio",
+      "wireplumber",
+      "pulseaudio-utils"
+    ],
+    "requiredExecutables": [
+      "/usr/bin/pipewire",
+      "/usr/bin/pipewire-pulse",
+      "/usr/bin/wireplumber",
+      "/usr/bin/pactl"
+    ],
+    "guestBootstrap": "/usr/libexec/deskforge/guest-session",
+    "pipeWireConfig": "/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
   },
   "assetDelivery": {
     "packNames": [
