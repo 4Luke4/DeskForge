@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "workspaceIntegrationVersion": 1,
+  "schemaVersion": 4,
+  "workspaceIntegrationVersion": 2,
   "id": "fedora-xfce-44",
   "displayName": "Fedora XFCE 44",
   "release": "44",
@@ -60,6 +60,29 @@
     ],
     "guestBootstrap": "/usr/libexec/deskforge/guest-session",
     "pipeWireConfig": "/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf"
+  },
+  "graphicsHost": {
+    "name": "Mesa VirGL guest driver",
+    "probeExecutable": "/usr/bin/glxinfo",
+    "probeTimeoutExecutable": "/usr/bin/timeout",
+    "requiredMesaFiles": [
+      "/usr/lib64/dri/virtio_gpu_dri.so",
+      "/usr/lib64/dri/swrast_dri.so"
+    ],
+    "packages": [
+      {
+        "name": "glx-utils",
+        "version": "9.0.0-11.fc44",
+        "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/aarch64/os/Packages/g/glx-utils-9.0.0-11.fc44.aarch64.rpm",
+        "sizeBytes": 73559,
+        "sha256": "11e85732e87c1ea98175a98b309a24388e420163be502b469fe156c5e3fb563b"
+      }
+    ],
+    "source": {
+      "url": "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/source/tree/Packages/m/mesa-demos-9.0.0-11.fc44.src.rpm",
+      "sizeBytes": 14870488,
+      "sha256": "3f8a0952435c1fd386e956f03b2477b087980d5378afe1006d891fa34b404552"
+    }
   },
   "assetDelivery": {
     "packNames": [

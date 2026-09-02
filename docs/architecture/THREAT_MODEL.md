@@ -38,7 +38,11 @@ approved documents, uses private Unix sockets, and exports no Android service or
 - **Malformed or replaced audio transport:** the native supervisor creates owner-only FIFOs through
   a trusted directory descriptor, rejects links and non-FIFOs, retains validated descriptors, and
   bounds all PCM buffering. PipeWire exposes no audio TCP listener.
-- **GPU incompatibility:** preliminary Vulkan-loader probing with an explicit software fallback.
+- **Malformed graphics transport:** the vtest parser runs in a non-exported isolated service and
+  receives only a pre-bound Unix listener descriptor. `SO_PEERCRED` restricts peers to the DeskForge
+  guest UID; client, command, address-space, descriptor, and core-dump limits bound compromise impact.
+- **GPU incompatibility:** an EGL/GLES self-test rejects SwiftShader, llvmpipe, and softpipe as host
+  acceleration. Fedora then probes Mesa VirGL before XFCE and selects llvmpipe on any failure.
   Device/driver self-tests remain a production release gate.
 - **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
   allocations and text, validates rectangle arithmetic and negotiated security, and terminates the
@@ -52,8 +56,8 @@ approved documents, uses private Unix sockets, and exports no Android service or
 
 ## Release validation
 
-The production threat model must be revisited after accelerated display and the physical-device
-matrix are complete. Google Play microphone disclosure and executable-code treatment, plus every copyleft distribution
+The production threat model must be revisited after the physical-device matrix is complete. Google
+Play microphone disclosure and executable-code treatment, plus every copyleft distribution
 obligation require explicit review before publication.
 
 PRoot and the device allowlist are not a UID or kernel sandbox. Before production, adversarial guest

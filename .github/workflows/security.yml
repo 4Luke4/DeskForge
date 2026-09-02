@@ -79,6 +79,13 @@ jobs:
       - name: Compile analyzed sources
         if: matrix.language == 'cpp'
         run: |
+          sudo apt-get update
+          sudo apt-get install --yes meson ninja-build pkg-config
+          scripts/build-graphics-runtime-android.sh \
+            app/src/main/jniLibs/arm64-v8a/libdeskforge_graphics.so \
+            build/codeql-graphics/work
+          scripts/verify-graphics-runtime.sh \
+            app/src/main/jniLibs/arm64-v8a/libdeskforge_graphics.so
           scripts/build-proot-android.sh \
             build/codeql-proot/libproot.so \
             build/codeql-proot/libproot-loader.so \

@@ -36,6 +36,7 @@
     <string name="microphone_summary">По умолчанию выключен. Android запросит разрешение перед записью звука.</string>
     <string name="diagnostics_title">Диагностика среды выполнения</string>
     <string name="diagnostics_empty">Запустите проверку готовности PRoot, графики, звука и устройств ввода.</string>
+    <string name="diagnostic_guest_graphics">OpenGL гостевой системы</string>
     <string name="action_check">Запустить проверку</string>
     <string name="runtime_unavailable">Проверенная среда PRoot не установлена в этой сборке.</string>
     <string name="desktop_preview">Поверхность рабочего стола Linux</string>
@@ -73,4 +74,5 @@
     <string name="error_session_start_failed">Не удалось запустить рабочий стол Fedora.</string>
     <string name="error_session_stop_failed">Не удалось корректно остановить рабочий стол Fedora.</string>
     <string name="error_display_disconnected">Соединение с рабочим столом Fedora неожиданно прервано.</string>
+    <string name="error_graphics_runtime_lost">Служба ускоренной графики неожиданно завершила работу. Перезапустите сеанс для программного рендеринга.</string>
 </resources>

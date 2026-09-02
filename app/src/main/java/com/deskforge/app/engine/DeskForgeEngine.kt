@@ -5,11 +5,14 @@ import com.deskforge.app.model.DesktopViewport
 import com.deskforge.app.model.AudioTransportSnapshot
 import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.RuntimeCapabilities
+import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.SessionState
 
 /** Stable Kotlin boundary for the native runtime. */
 interface DeskForgeEngine {
     fun inspectCapabilities(): RuntimeCapabilities
+
+    fun graphicsSnapshot(): GraphicsTransportSnapshot
 
     fun startSession(rootfsPath: String, surface: Surface, viewport: DesktopViewport): SessionState
 

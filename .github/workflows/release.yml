@@ -71,6 +71,16 @@ jobs:
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
+      - name: Build verified graphics runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes meson ninja-build pkg-config
+          scripts/build-graphics-runtime-android.sh \
+            app/src/main/jniLibs/arm64-v8a/libdeskforge_graphics.so \
+            build/release-graphics/work
+          scripts/verify-graphics-runtime.sh \
+            app/src/main/jniLibs/arm64-v8a/libdeskforge_graphics.so
+
       - name: Verify release prerequisites
         run: |
           scripts/verify-fedora-payload.sh
@@ -79,16 +89,25 @@ jobs:
           scripts/verify-proot-binary.sh \
             app/src/main/jniLibs/arm64-v8a/libproot.so \
             app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+          scripts/verify-graphics-runtime.sh \
+            app/src/main/jniLibs/arm64-v8a/libdeskforge_graphics.so
 
       - name: Prepare corresponding source
         run: |
           scripts/package-proot-source.sh build/deskforge-proot-corresponding-source.tar.gz
+          scripts/package-graphics-source.sh build/deskforge-graphics-corresponding-source.tar.gz
           source_size="$(jq -r '.desktopHost.source.sizeBytes' config/distros/fedora-xfce-44.json)"
           source_sha256="$(jq -r '.desktopHost.source.sha256' config/distros/fedora-xfce-44.json)"
           source_path=build/fedora-corresponding-source/tigervnc.src.rpm
           test "$(stat --format='%s' "$source_path")" = "$source_size"
           echo "$source_sha256  $source_path" | sha256sum --check --strict
           cp "$source_path" build/tigervnc.src.rpm
+          graphics_source_size="$(jq -r '.graphicsHost.source.sizeBytes' config/distros/fedora-xfce-44.json)"
+          graphics_source_sha256="$(jq -r '.graphicsHost.source.sha256' config/distros/fedora-xfce-44.json)"
+          graphics_source_path=build/fedora-corresponding-source/mesa-demos.src.rpm
+          test "$(stat --format='%s' "$graphics_source_path")" = "$graphics_source_size"
+          echo "$graphics_source_sha256  $graphics_source_path" | sha256sum --check --strict
+          cp "$graphics_source_path" build/mesa-demos.src.rpm
 
       - name: Materialize ephemeral signing configuration
         env:
@@ -110,13 +129,18 @@ jobs:
         # The runner is clean; a Gradle clean here would delete the verified source artifacts above.
         run: ./gradlew --no-daemon --stacktrace bundleRelease
 
+      - name: Verify packaged graphics runtime
+        run: scripts/verify-packaged-graphics.sh app/build/outputs/bundle/release/*.aab
+
       - name: Attest release bundle
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             app/build/outputs/bundle/release/*.aab
             build/deskforge-proot-corresponding-source.tar.gz
+            build/deskforge-graphics-corresponding-source.tar.gz
             build/tigervnc.src.rpm
+            build/mesa-demos.src.rpm
 
       - name: Retain release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -125,6 +149,8 @@ jobs:
           path: |
             app/build/outputs/bundle/release/*.aab
             build/deskforge-proot-corresponding-source.tar.gz
+            build/deskforge-graphics-corresponding-source.tar.gz
             build/tigervnc.src.rpm
+            build/mesa-demos.src.rpm
           if-no-files-found: error
           retention-days: 30

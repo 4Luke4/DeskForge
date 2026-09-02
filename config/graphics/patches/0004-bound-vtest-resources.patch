@@ -1,0 +1,164 @@
+--- a/vtest/vtest.h
++++ b/vtest/vtest.h
+@@ -78,5 +78,7 @@
+ int vtest_resource_export_fd(uint32_t length_dw);
+ 
+ void vtest_set_max_length(uint32_t length);
++void vtest_set_resource_limits(uint32_t maximum_resources, uint64_t maximum_resource_bytes,
++                               uint64_t maximum_aggregate_bytes);
+ 
+ #endif
+--- a/vtest/vtest_renderer.c
++++ b/vtest/vtest_renderer.c
+@@ -78,6 +78,7 @@
+    uint32_t res_id;
+ 
+    struct iovec iov;
++   uint64_t accounted_bytes;
+ };
+ 
+ struct vtest_sync {
+@@ -151,6 +151,7 @@
+    bool context_initialized;
+ 
+    struct util_hash_table *resource_table;
++   uint32_t resource_count;
+    struct util_hash_table *sync_table;
+ 
+    struct vtest_timeline timelines[VTEST_MAX_TIMELINE_COUNT];
+@@ -181,5 +182,9 @@
+ 
+    uint32_t max_length;
++   uint32_t maximum_resources;
++   uint64_t maximum_resource_bytes;
++   uint64_t maximum_aggregate_bytes;
++   uint64_t aggregate_bytes;
+ 
+    int implicit_fence_submitted;
+    int implicit_fence_completed;
+@@ -247,6 +250,10 @@
+ 
+ static struct vtest_renderer renderer = {
+    .max_length = UINT_MAX,
++   .maximum_resources = UINT_MAX,
++   .maximum_resource_bytes = UINT64_MAX,
++   .maximum_aggregate_bytes = UINT64_MAX,
++   .aggregate_bytes = 0,
+    .next_context_id = 1,
+    .next_resource_id = 1,
+    .next_sync_id = 1,
+@@ -271,6 +278,7 @@
+    res->res_id = client_res_id ? client_res_id : res->server_res_id;
+    res->iov.iov_base = NULL;
+    res->iov.iov_len = 0;
++   res->accounted_bytes = 0;
+ 
+    return res;
+ }
+@@ -280,6 +288,8 @@
+    /* virgl_renderer_ctx_detach_resource and virgl_renderer_resource_detach_iov
+     * are implied
+     */
++   renderer.aggregate_bytes -= MIN2(res->accounted_bytes, renderer.aggregate_bytes);
++   res->accounted_bytes = 0;
+    virgl_renderer_resource_unref(res->res_id);
+ 
+    if (res->iov.iov_base)
+@@ -728,6 +733,7 @@
+    ctx->protocol_version = 0;
+    ctx->capset_id = 0;
+    ctx->context_initialized = false;
++   ctx->resource_count = 0;
+ 
+    return ctx;
+ }
+@@ -1248,6 +1254,22 @@
+    struct vtest_resource *res;
+    int ret;
+ 
++   uint64_t estimated_size = 16;
++   const uint32_t dimensions[] = {
++      args->width, args->height, MAX2(args->depth, 1), MAX2(args->array_size, 1)
++   };
++   for (size_t index = 0; index < ARRAY_SIZE(dimensions); index++) {
++      if (dimensions[index] && estimated_size > renderer.maximum_resource_bytes / dimensions[index])
++         return -E2BIG;
++      estimated_size *= dimensions[index];
++   }
++   const uint64_t accounted_size = shm_size > estimated_size ? shm_size : estimated_size;
++   if (ctx->resource_count >= renderer.maximum_resources ||
++       shm_size > renderer.maximum_resource_bytes ||
++       accounted_size > renderer.maximum_aggregate_bytes - renderer.aggregate_bytes) {
++      return -E2BIG;
++   }
++
+    if (ctx->protocol_version >= 3) {
+       if (args->handle)
+          return -EINVAL;
+@@ -1314,6 +1330,9 @@
+    }
+ 
+    util_hash_table_set(ctx->resource_table, intptr_to_pointer(res->res_id), res);
++   ctx->resource_count++;
++   res->accounted_bytes = accounted_size;
++   renderer.aggregate_bytes += accounted_size;
+ 
+    return 0;
+ }
+@@ -1363,6 +1380,11 @@
+    args.blob_id = res_create_blob_buf[VCMD_RES_CREATE_BLOB_ID_LO];
+    args.blob_id |= (uint64_t)res_create_blob_buf[VCMD_RES_CREATE_BLOB_ID_HI] << 32;
+ 
++   if (ctx->resource_count >= renderer.maximum_resources ||
++       args.size > renderer.maximum_resource_bytes ||
++       args.size > renderer.maximum_aggregate_bytes - renderer.aggregate_bytes)
++      return -E2BIG;
++
+    res = vtest_new_resource(0);
+    if (!res)
+       return -ENOMEM;
+@@ -1442,7 +1462,10 @@
+    /* Closing the file descriptor does not unmap the region. */
+    close(fd);
+
+    util_hash_table_set(ctx->resource_table, intptr_to_pointer(res->res_id), res);
++   ctx->resource_count++;
++   res->accounted_bytes = args.size;
++   renderer.aggregate_bytes += args.size;
+ 
+    return 0;
+ }
+@@ -1452,6 +1476,7 @@
+    uint32_t res_unref_buf[VCMD_RES_UNREF_SIZE];
+    int ret;
+    uint32_t handle;
++   struct vtest_resource *resource;
+ 
+    ret = ctx->input->read(ctx->input, &res_unref_buf,
+                           sizeof(res_unref_buf));
+@@ -1460,7 +1485,11 @@
+    }
+ 
+    handle = res_unref_buf[VCMD_RES_UNREF_RES_HANDLE];
+-   util_hash_table_remove(ctx->resource_table, intptr_to_pointer(handle));
++   resource = util_hash_table_get(ctx->resource_table, intptr_to_pointer(handle));
++   if (resource) {
++      util_hash_table_remove(ctx->resource_table, intptr_to_pointer(handle));
++      ctx->resource_count--;
++   }
+ 
+    return 0;
+ }
+@@ -3056,3 +3080,12 @@
+ {
+    renderer.max_length = length;
+ }
++
++void vtest_set_resource_limits(uint32_t maximum_resources, uint64_t maximum_resource_bytes,
++                               uint64_t maximum_aggregate_bytes)
++{
++   renderer.maximum_resources = maximum_resources;
++   renderer.maximum_resource_bytes = maximum_resource_bytes;
++   renderer.maximum_aggregate_bytes = maximum_aggregate_bytes;
++   renderer.aggregate_bytes = 0;
++}

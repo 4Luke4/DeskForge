@@ -9,7 +9,7 @@ evidence links; do not store device serial numbers or user data in the repositor
 | Area | Required scenarios | Acceptance evidence |
 | --- | --- | --- |
 | Installation | Fresh install, interrupted download, insufficient space, retry, application update | Screen recording and sanitized diagnostics |
-| Graphics | Accelerated probe, software fallback, resize, rotation, suspend/resume | Renderer identity, screenshots, 30-minute trace |
+| Graphics | Hardware EGL self-test, VirGL `glxinfo`, llvmpipe fallback, rejected peer, isolated-service death, resize, rotation, suspend/resume | Host and guest renderer identities, fallback reason, screenshots, 30-minute trace |
 | Input | Touch, stylus where supported, hardware/software keyboard, composition, shortcuts, mouse buttons, wheel | Completed interaction checklist |
 | Clipboard | Manual transfer in both directions, denial, rich-content rejection, size limit, rotation | Sanitized state log without clipboard contents |
 | Audio | Built-in, USB, and Bluetooth playback; focus loss/recovery; microphone denial, one-time grant, grant, background continuation, notification stop, and revocation | Sanitized route and bounded underrun/overflow log, consent recording, and proof of silence after disable |

@@ -103,6 +103,9 @@ internal class FedoraWorkspaceStore(
             File(rootfs, "usr/bin/pipewire-pulse").canExecute() &&
             File(rootfs, "usr/bin/wireplumber").canExecute() &&
             File(rootfs, "usr/bin/pactl").canExecute() &&
+            File(rootfs, "usr/bin/glxinfo").canExecute() &&
+            File(rootfs, "usr/lib64/dri/virtio_gpu_dri.so").isFile &&
+            File(rootfs, "usr/lib64/dri/swrast_dri.so").isFile &&
             File(rootfs, "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf").isFile &&
             installMarkerMatches(rootfs, payloadSha256)
 
@@ -115,7 +118,7 @@ internal class FedoraWorkspaceStore(
         }
         return runCatching {
             val declaration = JSONObject(marker.readText())
-            declaration.getInt("schemaVersion") == 3 &&
+            declaration.getInt("schemaVersion") == 4 &&
                 declaration.getString("payloadSha256") == payloadSha256 &&
                 declaration.getInt("workspaceIntegrationVersion") == expectedIntegrationVersion
         }.getOrDefault(false)

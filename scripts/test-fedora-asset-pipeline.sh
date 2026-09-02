@@ -90,16 +90,20 @@ jq --null-input \
   --argjson archiveSizeBytes "${archive_size}" \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   '{
-    schemaVersion: 3,
+    schemaVersion: 4,
     distroId: "fedora-xfce-44",
     release: "44",
     desktopHostVersion: "1.16.2-4.fc44",
-    workspaceIntegrationVersion: 1,
+    workspaceIntegrationVersion: 2,
     audioHostPackages: [
       "pipewire-1.6.2-1.fc44.aarch64",
       "pipewire-pulseaudio-1.6.2-1.fc44.aarch64",
       "wireplumber-0.5.8-1.fc44.aarch64",
       "pulseaudio-utils-17.0-9.fc44.aarch64"
+    ],
+    graphicsHostPackages: [
+      "glx-utils-9.0.0-11.fc44.aarch64",
+      "mesa-dri-drivers-26.0.0-1.fc44.aarch64"
     ],
     archiveSha256: $archiveSha256,
     archiveSizeBytes: $archiveSizeBytes,
@@ -121,7 +125,7 @@ if "${repository_root}/scripts/verify-fedora-payload.sh" "${fixture_repository}"
   exit 1
 fi
 cp "${manifest}.valid" "${manifest}"
-jq '.workspaceIntegrationVersion = 2' "${manifest}.valid" > "${manifest}"
+jq '.workspaceIntegrationVersion = 1' "${manifest}.valid" > "${manifest}"
 if "${repository_root}/scripts/verify-fedora-payload.sh" "${fixture_repository}"; then
   echo "Fedora verifier accepted a mismatched workspace integration" >&2
   exit 1

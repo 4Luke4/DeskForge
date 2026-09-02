@@ -21,6 +21,13 @@ area/audio:
           - "app/src/main/cpp/audio_*"
           - "app/src/test/cpp/audio_*"
           - "scripts/*audio*"
+area/graphics:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "config/graphics/**"
+          - "config/distros/*session.sh"
+          - "app/src/main/java/com/deskforge/app/graphics/**"
+          - "scripts/*graphics*"
 documentation:
   - changed-files:
       - any-glob-to-any-file: ["**/*.md"]

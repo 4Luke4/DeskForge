@@ -36,6 +36,7 @@
     <string name="microphone_summary">既定ではオフです。音声を取得する前に Android が許可を求めます。</string>
     <string name="diagnostics_title">ランタイム診断</string>
     <string name="diagnostics_empty">PRoot、グラフィックス、オーディオ、入力デバイスの準備状況を確認します。</string>
+    <string name="diagnostic_guest_graphics">ゲスト OpenGL</string>
     <string name="action_check">機能チェックを実行</string>
     <string name="runtime_unavailable">検証済み PRoot ランタイムはこのビルドにインストールされていません。</string>
     <string name="desktop_preview">Linux デスクトップ画面</string>
@@ -73,4 +74,5 @@
     <string name="error_session_start_failed">Fedora デスクトップを開始できませんでした。</string>
     <string name="error_session_stop_failed">Fedora デスクトップを正常に停止できませんでした。</string>
     <string name="error_display_disconnected">Fedora デスクトップへの接続が予期せず終了しました。</string>
+    <string name="error_graphics_runtime_lost">高速グラフィックスサービスが予期せず終了しました。ソフトウェア描画を使用するにはセッションを再起動してください。</string>
 </resources>

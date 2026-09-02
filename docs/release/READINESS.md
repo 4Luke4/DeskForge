@@ -1,6 +1,6 @@
 # Release Readiness
 
-DeskForge 0.5.0 is a development milestone. Merging local audio integration does not authorize a
+DeskForge 0.6.0 is a development milestone. Merging guest graphics acceleration does not authorize a
 production build or Google Play publication. Every production gate below requires retained evidence
 and an explicit maintainer decision.
 
@@ -8,9 +8,9 @@ and an explicit maintainer decision.
 | --- | --- | --- | --- |
 | Pull-request verification | Required CI, CodeQL, and dependency review jobs pass | Yes | Yes |
 | Emulator verification | Manually dispatched API 34/latest-stable ARM64 emulator jobs pass on protected `main` | No | Yes |
-| Runtime packaging | Two byte-identical API 34 ARM64 builds; ELF/APK/AAB digest checks; corresponding PRoot/talloc source and notices; protected-main emulator smoke evidence | No | Yes |
+| Runtime packaging | Two byte-identical API 34 ARM64 PRoot and VirGL builds; ELF/APK/AAB checks; retained PRoot/talloc/virglrenderer/libepoxy source and notices; protected-main emulator smoke evidence | No | Yes |
 | Fedora delivery | Signed-image/RPM verification and every generated Play asset pack below its enforced limit | No | Yes |
-| Desktop integration | XFCE frame, touch, mouse, physical/software keyboard, manual clipboard, playback route changes, and permission-gated microphone evidence | No | Yes |
+| Desktop integration | VirGL and llvmpipe selection, XFCE frame, touch, mouse, physical/software keyboard, manual clipboard, playback route changes, and permission-gated microphone evidence | No | Yes |
 | Physical qualification | Completed device matrix covering graphics, audio, input, thermals, lifecycle, and long sessions | No | Yes |
 | Localization | Native-speaker approval recorded for every non-English resource set | No | Yes |
 | Guest security boundary | Adversarial validation finds no same-UID Android IPC, inherited-descriptor, procfs, or device-node path around microphone consent | No | Yes |
@@ -24,8 +24,8 @@ aggregate digest before signing. A missing or mismatched payload, digest, source
 separately packaged PRoot executable fails closed. Google Play upload remains a deliberate
 human-controlled operation outside this milestone.
 
-Audio merge evidence requires the exact-commit Fedora asset workflow to validate the PipeWire
-package inventory and schema-3 guest configuration. GitHub's no-audio emulator can verify permission,
+Graphics and audio merge evidence requires the exact-commit Fedora asset workflow to validate the
+Mesa, glx-utils, and PipeWire inventories and schema-4 guest configuration. GitHub's no-audio emulator can verify permission,
 foreground-service, and failure behavior but cannot qualify acoustic playback or capture. Physical
 tablets must retain route, focus, denial, one-time grant, persistent grant, revocation, background
 capture, notification stop, and post-disable silence evidence before production approval.

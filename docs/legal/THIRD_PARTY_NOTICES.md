@@ -44,3 +44,26 @@ with or endorsed by the Fedora Project or XFCE project.
 - Integration: separately executed Fedora guest services; no PipeWire or WirePlumber code is linked into DeskForge
 - Transport: built-in PipeWire Pulse pipe modules over app-private PCM FIFOs
 - Source and licensing: exact package identities are retained with the payload; the verified Fedora image and release SBOM remain authoritative
+
+## virglrenderer
+
+- Project: <https://gitlab.freedesktop.org/virgl/virglrenderer>
+- Version: 1.3.0
+- License: MIT
+- Integration: statically linked into the isolated `libdeskforge_graphics.so` Android runtime
+- Source and patches: exact upstream archive and DeskForge transport patches are retained with release evidence
+
+## libepoxy
+
+- Project: <https://github.com/anholt/libepoxy>
+- Version: 1.5.10
+- License: MIT
+- Integration: statically linked into the isolated graphics runtime for EGL/GLES dispatch
+- Source: exact upstream archive is retained with the graphics corresponding-source bundle
+
+## Mesa demos / glx-utils
+
+- Fedora package: `glx-utils-9.0.0-11.fc44.aarch64`
+- License: MIT
+- Integration: separately executed `glxinfo` inside Fedora before the desktop starts
+- Source: exact Fedora `mesa-demos` source RPM is retained with every prepared payload

@@ -32,10 +32,20 @@ require(prootRuntime["fileName"] == "libproot.so") { "Unexpected PRoot runtime f
 require(prootLoader["fileName"] == "libproot-loader.so") { "Unexpected PRoot loader file name" }
 
 val fedoraManifest = JsonSlurper().parse(rootProject.file("config/distros/fedora-xfce-44.json")) as Map<*, *>
-require(fedoraManifest["schemaVersion"] == 3) { "Unsupported Fedora distribution manifest schema" }
+require(fedoraManifest["schemaVersion"] == 4) { "Unsupported Fedora distribution manifest schema" }
 val fedoraWorkspaceIntegrationVersion =
     (fedoraManifest["workspaceIntegrationVersion"] as Number).toInt()
 require(fedoraWorkspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
+
+val graphicsManifest = JsonSlurper().parse(rootProject.file("config/graphics/virgl.json")) as Map<*, *>
+require(graphicsManifest["schemaVersion"] == 1) { "Unsupported graphics manifest schema" }
+val graphicsBinary = graphicsManifest["binary"] as Map<*, *>
+val graphicsTransport = graphicsManifest["transport"] as Map<*, *>
+require(graphicsBinary["fileName"] == "libdeskforge_graphics.so") { "Unexpected graphics runtime file name" }
+val graphicsSocketName = graphicsTransport["socketName"] as String
+require(graphicsSocketName.matches(Regex("[a-z0-9._-]+"))) { "Invalid graphics socket name" }
+val graphicsStartupTimeoutMs = (graphicsTransport["startupTimeoutMs"] as Number).toLong()
+require(graphicsStartupTimeoutMs in 1_000..30_000) { "Invalid graphics startup timeout" }
 
 val androidToolchain = Properties().apply {
     rootProject.file("config/android/toolchain.properties").inputStream().use(::load)
@@ -76,12 +86,20 @@ android {
             "FEDORA_WORKSPACE_INTEGRATION_VERSION",
             fedoraWorkspaceIntegrationVersion.toString(),
         )
+        buildConfigField("String", "GRAPHICS_SOCKET_NAME", "\"${graphicsSocketName}\"")
+        buildConfigField("long", "GRAPHICS_STARTUP_TIMEOUT_MS", "${graphicsStartupTimeoutMs}L")
 
         require(prootBinary["abi"] == toolchainString("abi")) {
             "PRoot binary ABI does not match the Android toolchain"
         }
         require((prootBinary["minimumApi"] as Number).toInt() == toolchainInt("minSdk")) {
             "PRoot binary API does not match minSdk"
+        }
+        require(graphicsBinary["abi"] == toolchainString("abi")) {
+            "Graphics runtime ABI does not match the Android toolchain"
+        }
+        require((graphicsBinary["minimumApi"] as Number).toInt() == toolchainInt("minSdk")) {
+            "Graphics runtime API does not match minSdk"
         }
 
         ndk {

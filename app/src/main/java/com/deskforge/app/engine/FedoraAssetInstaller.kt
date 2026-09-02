@@ -155,17 +155,21 @@ class FedoraAssetInstaller(
                                 require(stagedRootfs.resolve("usr/bin/pipewire-pulse").toFile().canExecute())
                                 require(stagedRootfs.resolve("usr/bin/wireplumber").toFile().canExecute())
                                 require(stagedRootfs.resolve("usr/bin/pactl").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/bin/glxinfo").toFile().canExecute())
+                                require(stagedRootfs.resolve("usr/lib64/dri/virtio_gpu_dri.so").toFile().isFile)
+                                require(stagedRootfs.resolve("usr/lib64/dri/swrast_dri.so").toFile().isFile)
                                 require(
                                     stagedRootfs.resolve(
                                         "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf",
                                     ).toFile().isFile,
                                 )
                                 val marker = JSONObject()
-                                    .put("schemaVersion", 3)
+                                    .put("schemaVersion", 4)
                                     .put("payloadSha256", archiveSha256)
                                     .put("desktopHostVersion", manifest.desktopHostVersion)
                                     .put("workspaceIntegrationVersion", manifest.workspaceIntegrationVersion)
                                     .put("audioHostPackages", manifest.audioHostPackages)
+                                    .put("graphicsHostPackages", manifest.graphicsHostPackages)
                                 stagedRootfs.resolve(FedoraWorkspaceStore.INSTALL_MARKER).toFile()
                                     .writeText(marker.toString())
                             }

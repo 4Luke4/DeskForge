@@ -1,9 +1,10 @@
 package com.deskforge.app.engine
 
 import android.content.Context
+import android.os.SystemClock
 import android.view.Surface
 import com.deskforge.app.BuildConfig
-import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.graphics.GraphicsTransportController
 import com.deskforge.app.model.AudioFailure
 import com.deskforge.app.model.AudioMicrophoneStatus
 import com.deskforge.app.model.AudioPlaybackStatus
@@ -11,6 +12,10 @@ import com.deskforge.app.model.AudioTransportSnapshot
 import com.deskforge.app.model.ClipboardFailure
 import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.ClipboardTransportStatus
+import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.GraphicsFallbackReason
+import com.deskforge.app.model.GraphicsTransportSnapshot
+import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
@@ -18,6 +23,8 @@ import com.deskforge.app.model.SessionState
 import java.io.File
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.LinkOption
 
 /**
  * JNI adapter. Native failures are converted into structured application state so the UI never
@@ -28,33 +35,37 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     private val prootExecutable = File(applicationContext.applicationInfo.nativeLibraryDir, "libproot.so")
     private val prootLoader = File(applicationContext.applicationInfo.nativeLibraryDir, "libproot-loader.so")
     private val runtimeStorage = ProotRuntimeStorage(File(applicationContext.codeCacheDir, "proot"))
+    private val graphics = GraphicsTransportController(applicationContext, ::nativeCreateGraphicsListener)
 
     override fun inspectCapabilities(): RuntimeCapabilities {
-        val fields = nativeInspect(prootExecutable.absolutePath).split('|', limit = 4)
-        if (fields.size != 4) {
+        val fields = nativeInspect(prootExecutable.absolutePath).split('|', limit = 3)
+        if (fields.size != 3) {
             return RuntimeCapabilities(
                 prootAvailable = false,
-                vulkanAvailable = false,
+                guestGraphicsAvailable = false,
                 audioAvailable = false,
-                rendererMode = RendererMode.Software("Invalid native capability response"),
+                rendererMode = RendererMode.Software(
+                    reason = GraphicsFallbackReason.RUNTIME_UNAVAILABLE,
+                    detail = "Invalid native capability response",
+                ),
                 detail = "The native engine returned malformed diagnostics.",
             )
         }
 
         val nativeProotAvailable = fields[0].toBooleanStrictOrNull() ?: false
         val prootAvailable = nativeProotAvailable && runtimeIsVerified()
-        val vulkanAvailable = fields[1].toBooleanStrictOrNull() ?: false
-        val audioAvailable = fields[2].toBooleanStrictOrNull() ?: false
-        // Vulkan-loader presence is diagnostic only until an accelerated desktop path is qualified.
-        val rendererMode = RendererMode.Software("RFB framebuffer")
+        val audioAvailable = fields[1].toBooleanStrictOrNull() ?: false
+        val rendererSnapshot = graphics.snapshot()
         return RuntimeCapabilities(
             prootAvailable = prootAvailable,
-            vulkanAvailable = vulkanAvailable,
+            guestGraphicsAvailable = rendererSnapshot.status == GraphicsTransportStatus.READY,
             audioAvailable = audioAvailable,
-            rendererMode = rendererMode,
-            detail = if (prootAvailable) fields[3] else "Verified runtime executable is absent",
+            rendererMode = rendererSnapshot.rendererMode,
+            detail = if (prootAvailable) fields[2] else "Verified runtime executable is absent",
         )
     }
+
+    override fun graphicsSnapshot(): GraphicsTransportSnapshot = graphics.snapshot()
 
     override fun startSession(
         rootfsPath: String,
@@ -70,6 +81,11 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
         return try {
             val runtimeDirectory = runtimeStorage.prepare()
+            val hostRendererMode = graphics.start(runtimeDirectory, BuildConfig.GRAPHICS_STARTUP_TIMEOUT_MS)
+            if (hostRendererMode is RendererMode.Software) {
+                // A closed socket pathname must not make the guest spend its probe budget on a dead transport.
+                File(runtimeDirectory, "virgl.sock").delete()
+            }
             val result = nativeStart(
                 prootExecutable.absolutePath,
                 prootLoader.absolutePath,
@@ -81,12 +97,21 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                 viewport.densityDpi,
             )
             if (result > 0) {
-                SessionState.Running(result, inspectCapabilities().rendererMode)
+                val rendererMode = if (hostRendererMode is RendererMode.Accelerated &&
+                    awaitGuestGraphicsMode(runtimeDirectory) != "virgl"
+                ) {
+                    graphics.guestProbeFailed("Fedora VirGL qualification failed; using llvmpipe")
+                } else {
+                    hostRendererMode
+                }
+                SessionState.Running(result, rendererMode)
             } else {
+                graphics.stop()
                 runtimeStorage.cleanup()
                 SessionState.Failed(SessionFailure.SESSION_START_FAILED, recoverable = true)
             }
         } catch (_: IllegalStateException) {
+            graphics.stop()
             runtimeStorage.cleanup()
             SessionState.Failed(SessionFailure.RUNTIME_UNAVAILABLE, recoverable = false)
         }
@@ -96,6 +121,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         if (nativeStop()) SessionState.Idle
         else SessionState.Failed(SessionFailure.SESSION_STOP_FAILED, recoverable = true)
     } finally {
+        graphics.stop()
         runtimeStorage.cleanup()
     }
 
@@ -196,6 +222,27 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     private external fun nativeInspect(prootPath: String): String
 
+    private external fun nativeCreateGraphicsListener(path: String): Int
+
+    private fun awaitGuestGraphicsMode(runtimeDirectory: File): String? {
+        val status = File(runtimeDirectory, "graphics.ready")
+        val deadline = SystemClock.uptimeMillis() + GUEST_GRAPHICS_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            val value = runCatching {
+                if (!Files.isRegularFile(status.toPath(), LinkOption.NOFOLLOW_LINKS) ||
+                    status.length() > MAX_GRAPHICS_STATUS_BYTES
+                ) {
+                    null
+                } else {
+                    status.readText().trim().takeIf { it == "virgl" || it == "software" }
+                }
+            }.getOrNull()
+            if (value != null) return value
+            SystemClock.sleep(GUEST_GRAPHICS_POLL_MS)
+        }
+        return null
+    }
+
     private fun runtimeIsVerified(): Boolean {
         val executableStatus = ProotRuntimeIntegrity.verify(
             executable = prootExecutable,
@@ -258,6 +305,9 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     private companion object {
         const val MAX_CLIPBOARD_TEXT_BYTES = 1024 * 1024
+        const val MAX_GRAPHICS_STATUS_BYTES = 32L
+        const val GUEST_GRAPHICS_TIMEOUT_MS = 12_000L
+        const val GUEST_GRAPHICS_POLL_MS = 50L
 
         init {
             System.loadLibrary("deskforge_engine")

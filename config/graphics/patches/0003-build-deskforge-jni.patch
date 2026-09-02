@@ -1,0 +1,20 @@
+--- a/vtest/meson.build
++++ b/vtest/meson.build
+@@ -62,6 +62,17 @@
+    ]
+ )
+ 
++deskforge_graphics = shared_library(
++   'deskforge_graphics',
++   'deskforge_graphics_jni.c',
++   link_whole : [libvtest],
++   dependencies : vtest_depends + [
++      cc.find_library('EGL'),
++      cc.find_library('GLESv3'),
++   ],
++   install : true,
++)
++
+ virgl_test_server_sources = [
+    'vtest_main.c',
+ ]

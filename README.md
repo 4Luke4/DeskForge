@@ -5,7 +5,7 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.5.0 adds local Linux playback and explicit per-session microphone integration. It is not
+> Version 0.6.0 adds isolated VirGL guest OpenGL with automatic llvmpipe fallback. It is not
 > approved for production distribution. Physical tablet, translation, Google Play policy, and
 > third-party licensing gates remain mandatory before release.
 
@@ -16,7 +16,7 @@ with a C++ runtime boundary and a separately executed upstream PRoot binary.
 - Devices: `arm64-v8a` and at least 720dp smallest width
 - Qualified preset: official Fedora XFCE 44 AArch64
 - Distribution: paid Google Play listing with Play Asset Delivery
-- Rendering: qualified RFB software path; capability-based acceleration remains planned
+- Rendering: VirGL guest OpenGL when the isolated host renderer passes qualification; llvmpipe fallback; RFB presentation
 - Input: touch, mouse, physical keyboard, and explicitly invoked Android software keyboard
 - Clipboard: manual plain-text transfer in either direction; automatic synchronization is disabled
 - Audio: PipeWire playback and a permission-gated, per-session microphone bridge
@@ -39,12 +39,13 @@ Android App Bundle. Installation is staged and atomically activated so an interr
 cannot replace a working workspace.
 
 See [Architecture](docs/architecture/README.md), [Security model](docs/architecture/THREAT_MODEL.md),
-[release readiness](docs/release/READINESS.md), and [third-party notices](docs/legal/THIRD_PARTY_NOTICES.md).
+[privacy boundaries](docs/legal/PRIVACY.md), [release readiness](docs/release/READINESS.md), and
+[third-party notices](docs/legal/THIRD_PARTY_NOTICES.md).
 
 ## Verification
 
 Repository policy requires verification through GitHub Actions. The workflows perform reproducible
-PRoot builds, ELF and package-integrity checks, Android and native builds, static analysis, unit tests,
+PRoot and VirGL builds, reproducibility, ELF and package-integrity checks, Android and native builds, static analysis, unit tests,
 ARM64 emulator QA on API 34 and the latest available
 stable image (currently API 36), dependency review,
 CodeQL analysis, artifact checks, and supply-chain validation. Generated screenshots, UI trees,
@@ -59,9 +60,9 @@ secrets only after Play and legal release gates have been approved.
 
 DeskForge is under active initial development. The verified PRoot runtime can now launch an
 interactive Fedora XFCE framebuffer through deterministic multi-pack delivery and an app-private
-RFB transport, with local playback and explicit microphone consent through private PCM FIFOs. A
-release remains deliberately blocked until post-merge runtime evidence, accelerated graphics, and
-physical-device qualification are complete.
+RFB transport, with isolated VirGL guest OpenGL, automatic llvmpipe fallback, local playback, and
+explicit microphone consent through private PCM FIFOs. Production remains blocked until post-merge
+runtime evidence and physical-device qualification are complete.
 
 ## License
 

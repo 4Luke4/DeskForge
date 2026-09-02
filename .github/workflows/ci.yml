@@ -51,7 +51,7 @@ jobs:
             (.binary.loader.sizeBytes >= 0)
           ' config/proot/version.json
           jq -e '
-            .schemaVersion == 3 and .workspaceIntegrationVersion > 0 and
+            .schemaVersion == 4 and .workspaceIntegrationVersion == 2 and
             .release and .imageUrl and
             (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0) and
             .desktopHost.version and .desktopHost.executable == "/usr/bin/Xvnc" and
@@ -69,6 +69,15 @@ jobs:
             ] and
             .audioHost.guestBootstrap == "/usr/libexec/deskforge/guest-session" and
             .audioHost.pipeWireConfig == "/etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf" and
+            .graphicsHost.probeExecutable == "/usr/bin/glxinfo" and
+            .graphicsHost.probeTimeoutExecutable == "/usr/bin/timeout" and
+            .graphicsHost.requiredMesaFiles == [
+              "/usr/lib64/dri/virtio_gpu_dri.so", "/usr/lib64/dri/swrast_dri.so"
+            ] and
+            (.graphicsHost.packages | length) > 0 and
+            all(.graphicsHost.packages[];
+              .url and (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0)) and
+            (.graphicsHost.source.sha256 | test("^[a-f0-9]{64}$")) and
             .assetDelivery.packNames == [
               "fedora_xfce_44", "fedora_xfce_44_1", "fedora_xfce_44_2", "fedora_xfce_44_3"
             ] and
@@ -86,6 +95,30 @@ jobs:
             .microphone.format == "s16le" and
             .microphone.sampleRateHz == 48000 and .microphone.channels == 1
           ' config/audio/bridge.json
+          jq -e '
+            .schemaVersion == 1 and .backend == "virgl" and .protocol == "vtest" and
+            .renderer.version == "1.3.0" and (.renderer.sizeBytes > 0) and
+            (.renderer.sha256 | test("^[a-f0-9]{64}$")) and
+            .buildDependencies.libepoxy.version == "1.5.10" and
+            (.buildDependencies.libepoxy.sha256 | test("^[a-f0-9]{64}$")) and
+            .binary.fileName == "libdeskforge_graphics.so" and
+            .binary.abi == "arm64-v8a" and .binary.minimumApi == 34 and
+            .transport.socketName == "virgl.sock" and
+            .transport.startupTimeoutMs == 10000 and
+            .transport.maximumClients == 32 and
+            .transport.maximumResourcesPerClient == 4096 and
+            .transport.maximumCommandBytes == 16777216 and
+            .transport.maximumResourceBytes == 134217728 and
+            .transport.maximumAggregateBytes == 536870912 and
+            .processLimits.addressSpaceBytes == 805306368 and
+            .processLimits.openFiles == 256 and .processLimits.coreBytes == 0 and
+            all(.patches[]; startswith("config/graphics/patches/"))
+          ' config/graphics/virgl.json
+          while IFS= read -r graphics_patch; do
+            test -f "$graphics_patch"
+          done < <(jq -r '.patches[]' config/graphics/virgl.json)
+          test -x scripts/build-graphics-runtime-android.sh
+          test -x scripts/verify-graphics-runtime.sh
 
       - name: Install Fedora pipeline fixture tools
         run: |
@@ -112,8 +145,49 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: scripts/validate-conventional-commits.sh "$BASE_SHA" "$HEAD_SHA"
 
+  graphics-runtime:
+    name: Reproducible VirGL runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Export pinned Android toolchain
+        id: toolchain
+        uses: ./.github/actions/export-android-toolchain
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install build prerequisites and pinned NDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes meson ninja-build pkg-config
+          sdkmanager "ndk;${ANDROID_NDK}"
+
+      - name: Build independent graphics runtimes
+        run: |
+          scripts/build-graphics-runtime-android.sh \
+            build/graphics/first/libdeskforge_graphics.so build/graphics/first/work
+          scripts/build-graphics-runtime-android.sh \
+            build/graphics/second/libdeskforge_graphics.so build/graphics/second/work
+          cmp \
+            build/graphics/first/libdeskforge_graphics.so \
+            build/graphics/second/libdeskforge_graphics.so
+          scripts/verify-graphics-runtime.sh build/graphics/first/libdeskforge_graphics.so
+
+      - name: Retain verified runtime
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-graphics-runtime
+          path: build/graphics/first/libdeskforge_graphics.so
+          if-no-files-found: error
+          retention-days: 14
+
   android:
     name: Android verification
+    needs: graphics-runtime
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -143,6 +217,12 @@ jobs:
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
+      - name: Restore verified graphics runtime
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: verified-graphics-runtime
+          path: app/src/main/jniLibs/arm64-v8a
+
       - name: Verify secured build dependency graph
         # The audit resolves every project configuration from its owning task and is intentionally
         # isolated from the build's configuration-cache and parallel-execution defaults.
@@ -169,6 +249,12 @@ jobs:
       - name: Verify packaged PRoot executable
         run: >-
           scripts/verify-packaged-proot.sh
+          app/build/outputs/apk/debug/*.apk
+          app/build/outputs/bundle/release/*.aab
+
+      - name: Verify packaged graphics runtime
+        run: >-
+          scripts/verify-packaged-graphics.sh
           app/build/outputs/apk/debug/*.apk
           app/build/outputs/bundle/release/*.aab
 

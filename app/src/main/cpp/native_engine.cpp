@@ -1,12 +1,13 @@
 #include <aaudio/AAudio.h>
 #include <android/log.h>
-#include <dlfcn.h>
 #include <fcntl.h>
 #include <jni.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -57,13 +58,6 @@ std::string from_jstring(JNIEnv* environment, jstring value) {
     return result;
 }
 
-bool has_vulkan_loader() {
-    void* library = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
-    if (library == nullptr) return false;
-    dlclose(library);
-    return true;
-}
-
 bool has_aaudio() {
     AAudioStreamBuilder* builder = nullptr;
     const aaudio_result_t result = AAudio_createStreamBuilder(&builder);
@@ -98,16 +92,37 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeInspect(
     jstring proot_path_value) {
     const std::string proot_path = from_jstring(environment, proot_path_value);
     const bool proot_available = is_regular_executable(proot_path.c_str());
-    const bool vulkan_available = has_vulkan_loader();
     const bool audio_available = has_aaudio();
     const std::string detail = proot_available
         ? "Verified runtime executable discovered"
         : "Verified runtime executable is absent";
     const std::string response =
         std::string(proot_available ? "true" : "false") + "|" +
-        (vulkan_available ? "true" : "false") + "|" +
         (audio_available ? "true" : "false") + "|" + detail;
     return environment->NewStringUTF(response.c_str());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeCreateGraphicsListener(
+    JNIEnv* environment,
+    jobject,
+    jstring path_value) {
+    const std::string path = from_jstring(environment, path_value);
+    sockaddr_un address{};
+    if (path.empty() || path.size() >= sizeof(address.sun_path)) return -1;
+
+    const int descriptor = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (descriptor < 0) return -1;
+    address.sun_family = AF_UNIX;
+    std::memcpy(address.sun_path, path.c_str(), path.size() + 1);
+    unlink(path.c_str());
+    if (bind(descriptor, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0 ||
+        chmod(path.c_str(), S_IRUSR | S_IWUSR) != 0 || listen(descriptor, 32) != 0) {
+        close(descriptor);
+        unlink(path.c_str());
+        return -1;
+    }
+    return descriptor;
 }
 
 extern "C" JNIEXPORT jint JNICALL

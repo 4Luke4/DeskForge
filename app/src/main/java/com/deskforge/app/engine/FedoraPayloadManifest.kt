@@ -8,6 +8,7 @@ internal data class FedoraPayloadManifest(
     val desktopHostVersion: String,
     val workspaceIntegrationVersion: Int,
     val audioHostPackages: List<String>,
+    val graphicsHostPackages: List<String>,
     val archiveSha256: String,
     val archiveSizeBytes: Long,
     val uncompressedSizeBytes: Long,
@@ -29,7 +30,7 @@ internal data class FedoraPayloadManifest(
         fun parse(json: String): FedoraPayloadManifest {
             require(json.length <= MAX_MANIFEST_CHARACTERS) { "Fedora payload manifest is too large" }
             val root = JSONObject(json)
-            require(root.getInt("schemaVersion") == 3) { "Unsupported Fedora payload manifest" }
+            require(root.getInt("schemaVersion") == 4) { "Unsupported Fedora payload manifest" }
             val workspaceIntegrationVersion = root.getInt("workspaceIntegrationVersion")
             require(workspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
             val audioPackagesJson = root.getJSONArray("audioHostPackages")
@@ -39,6 +40,17 @@ internal data class FedoraPayloadManifest(
                     add(audioPackagesJson.getString(index).also { identity ->
                         require(packageIdentityPattern.matches(identity)) {
                             "Invalid Fedora audio package identity"
+                        }
+                    })
+                }
+            }
+            val graphicsPackagesJson = root.getJSONArray("graphicsHostPackages")
+            require(graphicsPackagesJson.length() in 1..16) { "Invalid Fedora graphics package inventory" }
+            val graphicsHostPackages = buildList(graphicsPackagesJson.length()) {
+                repeat(graphicsPackagesJson.length()) { index ->
+                    add(graphicsPackagesJson.getString(index).also { identity ->
+                        require(packageIdentityPattern.matches(identity)) {
+                            "Invalid Fedora graphics package identity"
                         }
                     })
                 }
@@ -79,6 +91,7 @@ internal data class FedoraPayloadManifest(
                 desktopHostVersion = root.getString("desktopHostVersion").also { require(it.isNotBlank()) },
                 workspaceIntegrationVersion = workspaceIntegrationVersion,
                 audioHostPackages = audioHostPackages,
+                graphicsHostPackages = graphicsHostPackages,
                 archiveSha256 = archiveSha256,
                 archiveSizeBytes = archiveSizeBytes,
                 uncompressedSizeBytes = uncompressedSizeBytes,

@@ -13,6 +13,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.6.0] - 2026-09-02
+
+### Added
+
+- Source-pinned, reproducibly built VirGL guest OpenGL runtime using virglrenderer 1.3.0 and libepoxy 1.5.10.
+- A non-exported isolated renderer service with a pre-bound private socket, peer-credential validation, bounded protocol input, process limits, and hardware EGL/GLES self-test.
+- Fedora VirGL guest-driver and `glxinfo` qualification with an explicit llvmpipe fallback before XFCE starts.
+
+### Changed
+
+- Graphics diagnostics now report structured guest OpenGL state instead of preliminary Vulkan-loader presence.
+- Fedora workspaces now require schema 4 and workspace integration 2, including pinned graphics packages and Mesa driver validation.
+- RFB remains the display transport; VirGL accelerates guest OpenGL and does not expose Android Binder or device nodes to the guest.
+
+### Security
+
+- Renderer protocol handling runs under an isolated Android UID with 768 MiB address-space, 256-descriptor, zero-core, client, and command limits.
+- Renderer startup fails over to llvmpipe without weakening installation, runtime activation, microphone consent, or process-shutdown boundaries.
+
+### Known limitations
+
+- VirGL and llvmpipe behavior still require the physical ARM64 tablet matrix before production distribution.
+- Protected-main emulator, native-speaker translation, legal, and Google Play review remain required.
+
 ## [0.5.0] - 2026-09-01
 
 ### Added
@@ -112,7 +136,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/4Luke4/DeskForge/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/4Luke4/DeskForge/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/4Luke4/DeskForge/compare/v0.2.0...v0.3.0
