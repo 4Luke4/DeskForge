@@ -1,0 +1,40 @@
+--- a/src/mesa/util/os_misc.c
++++ b/src/mesa/util/os_misc.c
+@@ -55,8 +55,11 @@
+ #if DETECT_OS_ANDROID
+ #  define LOG_TAG "MESA"
+ #  include <unistd.h>
+-#  include <log/log.h>
+-#  include <cutils/properties.h>
++#  include <android/log.h>
++/* AOSP exposes cutils properties internally, but they are not part of the public NDK. */
++#  if defined(DESKFORGE_ANDROID_PROPERTIES)
++#    include <cutils/properties.h>
++#  endif
+ #elif DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS || DETECT_OS_HURD
+ #  include <unistd.h>
+ #elif DETECT_OS_OPENBSD || DETECT_OS_FREEBSD
+@@ -106,12 +109,12 @@
+    fputs(message, fout);
+    fflush(fout);
+ #  if DETECT_OS_ANDROID
+-   LOG_PRI(ANDROID_LOG_ERROR, LOG_TAG, "%s", message);
++   __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "%s", message);
+ #  endif
+ #endif
+ }
+ 
+-#if DETECT_OS_ANDROID
++#if DETECT_OS_ANDROID && defined(DESKFORGE_ANDROID_PROPERTIES)
+ #  include <ctype.h>
+ #  include "hash_table.h"
+ #  include "ralloc.h"
+@@ -211,7 +214,7 @@
+ {
+    const char *opt = getenv(name);
+-#if DETECT_OS_ANDROID
++#if DETECT_OS_ANDROID && defined(DESKFORGE_ANDROID_PROPERTIES)
+    if (!opt) {
+       opt = os_get_android_option(name);
+    }
+ #endif

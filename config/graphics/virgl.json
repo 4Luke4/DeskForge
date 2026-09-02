@@ -41,6 +41,7 @@
     "config/graphics/patches/0002-deskforge-isolated-transport.patch",
     "config/graphics/patches/0003-build-deskforge-jni.patch",
     "config/graphics/patches/0004-bound-vtest-resources.patch",
-    "config/graphics/patches/0005-account-formatted-resource-storage.patch"
+    "config/graphics/patches/0005-account-formatted-resource-storage.patch",
+    "config/graphics/patches/0006-use-public-android-ndk-apis.patch"
   ]
 }
