@@ -13,7 +13,7 @@ class FedoraPayloadManifestTest {
         val manifest = FedoraPayloadManifest.parse(manifestJson())
 
         assertEquals("fedora-xfce-44", manifest.distroId)
-        assertEquals(1, manifest.workspaceIntegrationVersion)
+        assertEquals(2, manifest.workspaceIntegrationVersion)
         assertEquals(1, manifest.parts.size)
         assertEquals("fedora_xfce_44", manifest.parts.single().packName)
     }
@@ -28,18 +28,27 @@ class FedoraPayloadManifestTest {
         FedoraPayloadManifest.parse(manifestJson(uncompressedSize = 25L * 1024L * 1024L * 1024L))
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsMalformedGraphicsPackageIdentity() {
+        FedoraPayloadManifest.parse(manifestJson().replace(
+            "glx-utils-9.0.0-11.fc44.aarch64",
+            "../../untrusted",
+        ))
+    }
+
     private fun manifestJson(
         packName: String = "fedora_xfce_44",
         uncompressedSize: Long = 11,
     ): String =
         """
         {
-          "schemaVersion": 3,
+          "schemaVersion": 4,
           "distroId": "fedora-xfce-44",
           "release": "44",
           "desktopHostVersion": "1.16.2-4.fc44",
-          "workspaceIntegrationVersion": 1,
+          "workspaceIntegrationVersion": 2,
           "audioHostPackages": ["pipewire-1.6.2-1.fc44.aarch64"],
+          "graphicsHostPackages": ["glx-utils-9.0.0-11.fc44.aarch64"],
           "archiveSha256": "${"a".repeat(64)}",
           "archiveSizeBytes": 10,
           "uncompressedSizeBytes": $uncompressedSize,

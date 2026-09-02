@@ -27,6 +27,9 @@ class FedoraWorkspaceStoreTest {
         executable(rootfs, "usr/bin/pipewire-pulse")
         executable(rootfs, "usr/bin/wireplumber")
         executable(rootfs, "usr/bin/pactl")
+        executable(rootfs, "usr/bin/glxinfo")
+        executable(rootfs, "usr/lib64/dri/virtio_gpu_dri.so")
+        executable(rootfs, "usr/lib64/dri/swrast_dri.so")
         File(rootfs, "etc/pipewire/pipewire-pulse.conf.d/deskforge-audio.conf").apply {
             parentFile?.mkdirs()
             writeText("audio")
@@ -34,7 +37,7 @@ class FedoraWorkspaceStoreTest {
         File(rootfs, FedoraWorkspaceStore.INSTALL_MARKER).apply {
             parentFile?.mkdirs()
             writeText(
-                """{"schemaVersion":3,"payloadSha256":"$digest","workspaceIntegrationVersion":1}""",
+                """{"schemaVersion":4,"payloadSha256":"$digest","workspaceIntegrationVersion":2}""",
             )
         }
 
@@ -101,6 +104,6 @@ class FedoraWorkspaceStoreTest {
     }
 
     private companion object {
-        const val INTEGRATION_VERSION = 1
+        const val INTEGRATION_VERSION = 2
     }
 }

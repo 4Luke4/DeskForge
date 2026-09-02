@@ -8,7 +8,7 @@ import org.junit.Test
 class RuntimeModelsTest {
     @Test
     fun `running state retains supervised pid and renderer decision`() {
-        val renderer = RendererMode.Accelerated("Vulkan")
+        val renderer = RendererMode.Accelerated(GraphicsBackend.VIRGL, "Adreno")
         val state = SessionState.Running(processId = 42, rendererMode = renderer)
 
         assertEquals(42, state.processId)
@@ -17,9 +17,14 @@ class RuntimeModelsTest {
 
     @Test
     fun `software renderer requires a diagnostic reason`() {
-        val renderer = RendererMode.Software("Vulkan self-test failed")
+        val renderer = RendererMode.Software(
+            reason = GraphicsFallbackReason.SELF_TEST_FAILED,
+            detail = "EGL self-test failed",
+        )
 
-        assertTrue(renderer.reason.isNotBlank())
+        assertTrue(renderer.detail.isNotBlank())
+        assertEquals(GraphicsBackend.LLVMPIPE, renderer.backend)
+        assertEquals(GraphicsFallbackReason.SELF_TEST_FAILED, renderer.reason)
     }
 
     @Test

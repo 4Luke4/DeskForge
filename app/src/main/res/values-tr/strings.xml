@@ -36,6 +36,7 @@
     <string name="microphone_summary">Varsayılan olarak kapalıdır. Ses yakalanmadan önce Android izin ister.</string>
     <string name="diagnostics_title">Çalışma zamanı tanılaması</string>
     <string name="diagnostics_empty">PRoot, grafik, ses ve giriş aygıtlarının hazır olup olmadığını denetleyin.</string>
+    <string name="diagnostic_guest_graphics">Konuk OpenGL</string>
     <string name="action_check">Yetenek denetimini çalıştır</string>
     <string name="runtime_unavailable">Doğrulanmış PRoot çalışma zamanı bu derlemede kurulu değil.</string>
     <string name="desktop_preview">Linux masaüstü yüzeyi</string>
@@ -73,4 +74,5 @@
     <string name="error_session_start_failed">Fedora masaüstü başlatılamadı.</string>
     <string name="error_session_stop_failed">Fedora masaüstü düzgün şekilde durdurulamadı.</string>
     <string name="error_display_disconnected">Fedora masaüstü bağlantısı beklenmedik şekilde sonlandı.</string>
+    <string name="error_graphics_runtime_lost">Hızlandırılmış grafik hizmeti beklenmedik şekilde sonlandı. Yazılım işlemeyi kullanmak için oturumu yeniden başlatın.</string>
 </resources>

@@ -1,0 +1,22 @@
+--- a/vtest/meson.build
++++ b/vtest/meson.build
+@@ -62,6 +62,19 @@
+    ]
+ )
+ 
++deskforge_graphics = shared_library(
++   'deskforge_graphics',
++   'deskforge_graphics_jni.c',
++   # Whole-archiving duplicates Gallium's generated format table from these dependencies.
++   link_with : [libvtest],
++   dependencies : vtest_depends + [
++      cc.find_library('EGL'),
++      cc.find_library('GLESv3'),
++      cc.find_library('log'),
++   ],
++   install : true,
++)
++
+ virgl_test_server_sources = [
+    'vtest_main.c',
+ ]

@@ -99,7 +99,8 @@ while IFS=$'\t' read -r package_name package_url package_size package_sha256; do
   rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${package_path}" | grep --fixed-strings --quiet "digests signatures OK"
   rpm2cpio "${package_path}" > "${package_cpio}"
   deskforge_apply_cpio_overlay "${package_cpio}" "${rootfs_directory}"
-done < <(jq -r '.desktopHost.packages[] | [.name, .url, .sizeBytes, .sha256] | @tsv' "${manifest}")
+done < <(jq -r '(.desktopHost.packages[], .graphicsHost.packages[]) |
+  [.name, .url, .sizeBytes, .sha256] | @tsv' "${manifest}")
 
 source_url="$(jq -r '.desktopHost.source.url' "${manifest}")"
 source_size="$(jq -r '.desktopHost.source.sizeBytes' "${manifest}")"
@@ -109,6 +110,17 @@ curl --fail --location --retry 3 --silent --show-error "${source_url}" --output 
 test "$(stat --format='%s' "${source_path}")" = "${source_size}"
 echo "${source_sha256}  ${source_path}" | sha256sum --check --strict
 rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${source_path}" | grep --fixed-strings --quiet "digests signatures OK"
+
+graphics_source_url="$(jq -r '.graphicsHost.source.url' "${manifest}")"
+graphics_source_size="$(jq -r '.graphicsHost.source.sizeBytes' "${manifest}")"
+graphics_source_sha256="$(jq -r '.graphicsHost.source.sha256' "${manifest}")"
+graphics_source_path="${source_output}/mesa-demos.src.rpm"
+curl --fail --location --retry 3 --silent --show-error \
+  "${graphics_source_url}" --output "${graphics_source_path}"
+test "$(stat --format='%s' "${graphics_source_path}")" = "${graphics_source_size}"
+echo "${graphics_source_sha256}  ${graphics_source_path}" | sha256sum --check --strict
+rpmkeys --dbpath "${working_directory}/rpmdb" --checksig "${graphics_source_path}" | \
+  grep --fixed-strings --quiet "digests signatures OK"
 
 sudo install -D --mode=0755 \
   "${repository_root}/config/distros/desktop-session.sh" \
@@ -126,7 +138,13 @@ guest_is_executable "${rootfs_directory}/usr/bin/Xvnc"
 guest_is_executable "${rootfs_directory}/usr/bin/startxfce4"
 guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/desktop-session"
 guest_is_executable "${rootfs_directory}/usr/libexec/deskforge/guest-session"
-for guest_executable in env bash dbus-run-session mkdir chmod rm seq sleep; do
+guest_is_executable "${rootfs_directory}/usr/bin/glxinfo"
+guest_is_executable "${rootfs_directory}/usr/bin/timeout"
+while IFS= read -r required_mesa_file; do
+  test -f "${rootfs_directory}${required_mesa_file}"
+  test ! -L "${rootfs_directory}${required_mesa_file}"
+done < <(jq -r '.graphicsHost.requiredMesaFiles[]' "${manifest}")
+for guest_executable in env bash dbus-run-session mkdir chmod rm seq sleep grep; do
   guest_is_executable "${rootfs_directory}/usr/bin/${guest_executable}"
 done
 while IFS= read -r guest_executable; do
@@ -177,6 +195,16 @@ done
 jq -r '.[]' <<<"${audio_packages_json}" > "${source_output}/fedora-audio-packages.txt"
 printf 'Recorded %s Fedora audio package identities.\n' \
   "$(jq 'length' <<<"${audio_packages_json}")"
+graphics_packages_json='[]'
+while IFS= read -r guest_graphics_file; do
+  package_identity="$(sudo rpm --root "${rootfs_directory}" --dbpath "${rpm_database_path}" \
+    --query --file --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "${guest_graphics_file}")"
+  graphics_packages_json="$(jq --arg identity "${package_identity}" \
+    'if index($identity) then . else . + [$identity] end' <<<"${graphics_packages_json}")"
+done < <(printf '%s\n' "$(jq -r '.graphicsHost.probeExecutable' "${manifest}")"; \
+  jq -r '.graphicsHost.requiredMesaFiles[]' "${manifest}")
+jq -e 'any(.[]; startswith("glx-utils-"))' <<<"${graphics_packages_json}" > /dev/null
+jq -r '.[]' <<<"${graphics_packages_json}" > "${source_output}/fedora-graphics-packages.txt"
 while read -r library; do
   sudo find "${rootfs_directory}/usr/lib64" "${rootfs_directory}/usr/lib" \
     -name "${library}" -print -quit | grep --quiet .
@@ -236,17 +264,19 @@ jq --null-input \
   --arg desktopHostVersion "$(jq -r '.desktopHost.version' "${manifest}")" \
   --argjson workspaceIntegrationVersion "${workspace_integration_version}" \
   --argjson audioHostPackages "${audio_packages_json}" \
+  --argjson graphicsHostPackages "${graphics_packages_json}" \
   --arg archiveSha256 "${archive_sha256}" \
   --argjson archiveSizeBytes "${archive_size}" \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   --argjson parts "${parts_json}" \
   '{
-    schemaVersion: 3,
+    schemaVersion: 4,
     distroId: $distroId,
     release: $release,
     desktopHostVersion: $desktopHostVersion,
     workspaceIntegrationVersion: $workspaceIntegrationVersion,
     audioHostPackages: $audioHostPackages,
+    graphicsHostPackages: $graphicsHostPackages,
     archiveSha256: $archiveSha256,
     archiveSizeBytes: $archiveSizeBytes,
     uncompressedSizeBytes: $uncompressedSizeBytes,

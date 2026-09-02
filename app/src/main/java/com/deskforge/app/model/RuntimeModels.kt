@@ -18,16 +18,44 @@ data class DistroDescriptor(
     val source: InstallSource,
 )
 
-/** The renderer selected after a runtime capability check. */
-sealed interface RendererMode {
-    data class Accelerated(val backend: String) : RendererMode
-    data class Software(val reason: String) : RendererMode
+enum class GraphicsBackend { VIRGL, LLVMPIPE }
+
+enum class GraphicsFallbackReason {
+    RUNTIME_UNAVAILABLE,
+    SERVICE_UNAVAILABLE,
+    SELF_TEST_FAILED,
+    SOFTWARE_HOST_RENDERER,
+    STARTUP_TIMEOUT,
+    TRANSPORT_LOST,
+    GUEST_PROBE_FAILED,
 }
+
+/** The renderer selected for guest OpenGL; RFB remains the desktop presentation transport. */
+sealed interface RendererMode {
+    data class Accelerated(
+        val backend: GraphicsBackend,
+        val hostRenderer: String,
+    ) : RendererMode
+
+    data class Software(
+        val backend: GraphicsBackend = GraphicsBackend.LLVMPIPE,
+        val reason: GraphicsFallbackReason,
+        val detail: String,
+    ) : RendererMode
+}
+
+enum class GraphicsTransportStatus { UNAVAILABLE, STARTING, READY, FALLBACK, FAILED, STOPPED }
+
+/** Sanitized renderer telemetry; descriptors and protocol payloads never enter application state. */
+data class GraphicsTransportSnapshot(
+    val status: GraphicsTransportStatus,
+    val rendererMode: RendererMode,
+)
 
 /** A complete, user-displayable capability snapshot. */
 data class RuntimeCapabilities(
     val prootAvailable: Boolean,
-    val vulkanAvailable: Boolean,
+    val guestGraphicsAvailable: Boolean,
     val audioAvailable: Boolean,
     val rendererMode: RendererMode,
     val detail: String,
@@ -56,6 +84,7 @@ enum class SessionFailure {
     SESSION_START_FAILED,
     SESSION_STOP_FAILED,
     DISPLAY_DISCONNECTED,
+    GRAPHICS_RUNTIME_LOST,
 }
 
 /** Single authoritative lifecycle for a managed Linux session. */

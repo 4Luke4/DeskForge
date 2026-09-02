@@ -11,7 +11,7 @@ test -f "${payload_manifest}"
 jq --exit-status --slurpfile distro "${distro_manifest}" '
   $distro[0] as $config |
   . as $payload |
-  .schemaVersion == 3 and
+  .schemaVersion == 4 and
   .distroId == $config.id and
   .release == $config.release and
   .desktopHostVersion == $config.desktopHost.version and
@@ -23,6 +23,10 @@ jq --exit-status --slurpfile distro "${distro_manifest}" '
     $payload.audioHostPackages[$index] |
     startswith($config.audioHost.requiredPackages[$index] + "-")
   ) and
+  (.graphicsHostPackages | length) > 0 and
+  (.graphicsHostPackages | length) <= 16 and
+  all(.graphicsHostPackages[]; test("^[A-Za-z0-9+_.:-]{1,160}$")) and
+  any(.graphicsHostPackages[]; startswith("glx-utils-")) and
   (.parts | length) > 0 and
   (.parts | length) <= $config.assetDelivery.maximumParts and
   (.parts | length) <= ($config.assetDelivery.packNames | length) and

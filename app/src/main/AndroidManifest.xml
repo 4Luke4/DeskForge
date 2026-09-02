@@ -56,6 +56,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Maintains a user-started local Linux desktop session while its Android surface is recreated or temporarily backgrounded." />
         </service>
+        <service
+            android:name=".graphics.GraphicsRendererService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":graphics" />
     </application>
 
 </manifest>

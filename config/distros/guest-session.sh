@@ -9,6 +9,7 @@ pipewire_pid=
 wireplumber_pid=
 pulse_pid=
 xfce_pid=
+graphics_mode=software
 cleanup() {
     trap - EXIT INT TERM
     for pid in "${xfce_pid}" "${pulse_pid}" "${wireplumber_pid}" "${pipewire_pid}"; do
@@ -17,7 +18,7 @@ cleanup() {
     for pid in "${xfce_pid}" "${pulse_pid}" "${wireplumber_pid}" "${pipewire_pid}"; do
         [[ -z "${pid}" ]] || wait "${pid}" 2>/dev/null || true
     done
-    rm -f "${runtime_directory}/audio.ready"
+    rm -f "${runtime_directory}/audio.ready" "${runtime_directory}/graphics.ready"
 }
 trap cleanup EXIT INT TERM
 
@@ -40,6 +41,25 @@ done
 /usr/bin/pactl set-default-source deskforge_microphone
 : > "${runtime_directory}/audio.ready"
 chmod 0600 "${runtime_directory}/audio.ready"
+
+# The probe is deliberately completed before XFCE inherits a renderer selection.
+if [[ -S "${runtime_directory}/virgl.sock" ]] &&
+    LC_ALL=C LIBGL_ALWAYS_SOFTWARE=true GALLIUM_DRIVER=virpipe \
+      VTEST_SOCKET_NAME="${runtime_directory}/virgl.sock" \
+      /usr/bin/timeout 10s /usr/bin/glxinfo -B > "${runtime_directory}/graphics-probe.txt" 2>&1 &&
+    LC_ALL=C /usr/bin/grep --ignore-case --extended-regexp --quiet \
+      '^OpenGL renderer string:.*virgl' "${runtime_directory}/graphics-probe.txt"; then
+    export LIBGL_ALWAYS_SOFTWARE=true
+    export GALLIUM_DRIVER=virpipe
+    export VTEST_SOCKET_NAME="${runtime_directory}/virgl.sock"
+    graphics_mode=virgl
+else
+    export LIBGL_ALWAYS_SOFTWARE=true
+    export GALLIUM_DRIVER=llvmpipe
+    unset VTEST_SOCKET_NAME
+fi
+printf '%s\n' "${graphics_mode}" > "${runtime_directory}/graphics.ready"
+chmod 0600 "${runtime_directory}/graphics.ready"
 
 DISPLAY=:0 /usr/bin/startxfce4 &
 xfce_pid=$!

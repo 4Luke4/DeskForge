@@ -54,6 +54,7 @@
     <string name="microphone_error_start">The microphone could not start.</string>
     <string name="diagnostics_title">Runtime diagnostics</string>
     <string name="diagnostics_empty">Start a capability check to inspect PRoot, graphics, audio, and input readiness.</string>
+    <string name="diagnostic_guest_graphics">Guest OpenGL</string>
     <string name="action_check">Run capability check</string>
     <string name="runtime_unavailable">The verified PRoot runtime is not installed in this build.</string>
     <string name="desktop_preview">Linux desktop surface</string>
@@ -74,4 +75,5 @@
     <string name="error_session_start_failed">The Fedora desktop could not start.</string>
     <string name="error_session_stop_failed">The Fedora desktop could not stop cleanly.</string>
     <string name="error_display_disconnected">The Fedora desktop connection ended unexpectedly.</string>
+    <string name="error_graphics_runtime_lost">The accelerated graphics service ended unexpectedly. Restart the session to use software rendering.</string>
 </resources>

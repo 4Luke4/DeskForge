@@ -253,13 +253,16 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
             Text(stringResource(R.string.diagnostics_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             DiagnosticRow("PRoot", readinessLabel(capabilities.prootAvailable))
-            DiagnosticRow("Vulkan", readinessLabel(capabilities.vulkanAvailable))
+            DiagnosticRow(
+                stringResource(R.string.diagnostic_guest_graphics),
+                readinessLabel(capabilities.guestGraphicsAvailable),
+            )
             DiagnosticRow("AAudio", readinessLabel(capabilities.audioAvailable))
             DiagnosticRow(
                 "Renderer",
                 when (val renderer = capabilities.rendererMode) {
-                    is RendererMode.Accelerated -> renderer.backend
-                    is RendererMode.Software -> renderer.reason
+                    is RendererMode.Accelerated -> "${renderer.backend.name}: ${renderer.hostRenderer}"
+                    is RendererMode.Software -> "${renderer.backend.name}: ${renderer.detail}"
                 },
             )
             Text(capabilities.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -532,5 +535,6 @@ private fun failureLabel(reason: SessionFailure): String = stringResource(
         SessionFailure.SESSION_START_FAILED -> R.string.error_session_start_failed
         SessionFailure.SESSION_STOP_FAILED -> R.string.error_session_stop_failed
         SessionFailure.DISPLAY_DISCONNECTED -> R.string.error_display_disconnected
+        SessionFailure.GRAPHICS_RUNTIME_LOST -> R.string.error_graphics_runtime_lost
     },
 )

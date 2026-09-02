@@ -1,0 +1,175 @@
+--- a/vtest/vtest_server.h
++++ b/vtest/vtest_server.h
+@@ -25,6 +25,10 @@
+ #ifndef VTEST_SERVER_H
+ #define VTEST_SERVER_H
+ 
+ int vtest_main(int argc, char **argv);
++void deskforge_vtest_prepare(void);
++int deskforge_vtest_run(int listener_fd, unsigned expected_peer_uid,
++                        unsigned maximum_clients, unsigned maximum_command_bytes);
++void deskforge_vtest_stop(void);
+ 
+ #endif
+--- a/vtest/vtest_server.c
++++ b/vtest/vtest_server.c
+@@ -29,6 +29,7 @@
+ #include <stdio.h>
+ #include <signal.h>
+ #include <stdbool.h>
++#include <errno.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <sys/types.h>
+@@ -100,6 +101,10 @@
+ 
+    int ctx_flags;
+ 
++   unsigned expected_peer_uid;
++   unsigned maximum_clients;
++   unsigned client_count;
++   volatile sig_atomic_t stop_requested;
+    struct list_head new_clients;
+    struct list_head active_clients;
+    struct list_head inactive_clients;
+@@ -128,7 +133,8 @@
+ static void vtest_server_open_read_file(void);
+ static void vtest_server_open_socket(void);
+ static void vtest_server_run(void);
+ static void vtest_server_close_socket(void);
++static bool vtest_server_peer_is_allowed(int fd);
+ static int vtest_client_dispatch_commands(struct vtest_client *client);
+ 
+ 
+@@ -158,10 +164,38 @@
+    }
+ }
+ #endif
+ 
+    return 0;
+ }
+ 
++void deskforge_vtest_prepare(void) { server.stop_requested = 0; }
++
++int deskforge_vtest_run(int listener_fd, unsigned expected_peer_uid,
++                        unsigned maximum_clients, unsigned maximum_command_bytes)
++{
++   if (listener_fd < 0 || !expected_peer_uid || !maximum_clients || !maximum_command_bytes)
++      return -EINVAL;
++
++   server.socket = listener_fd;
++   server.expected_peer_uid = expected_peer_uid;
++   server.maximum_clients = maximum_clients;
++   server.client_count = 0;
++   server.do_fork = false;
++   server.loop = true;
++   server.multi_clients = true;
++   server.ctx_flags = VIRGL_RENDERER_USE_EGL |
++                      VIRGL_RENDERER_USE_SURFACELESS |
++                      VIRGL_RENDERER_USE_GLES;
++   list_inithead(&server.new_clients);
++   list_inithead(&server.active_clients);
++   list_inithead(&server.inactive_clients);
++   vtest_set_max_length(maximum_command_bytes);
++   vtest_server_run();
++   return 0;
++}
++
++void deskforge_vtest_stop(void) { server.stop_requested = 1; }
++
+ #define OPT_NO_FORK 'f'
+ #define OPT_NO_LOOP_OR_FORK 'l'
+ #define OPT_MULTI_CLIENTS 'm'
+@@ -431,7 +460,22 @@
+    perror("Failed to setup socket.");
+    exit(1);
+ }
+ 
++static bool vtest_server_peer_is_allowed(int fd)
++{
++#ifdef SO_PEERCRED
++   struct ucred credentials;
++   socklen_t length = sizeof(credentials);
++   if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &credentials, &length) != 0)
++      return false;
++   return length == sizeof(credentials) &&
++          (unsigned)credentials.uid == server.expected_peer_uid;
++#else
++   (void)fd;
++   return false;
++#endif
++}
++
+ static void vtest_server_wait_clients(void)
+ {
+    struct vtest_client *client;
+@@ -472,7 +518,10 @@
+       perror("Failed to select on socket!");
+       exit(1);
+    }
+ 
++   if (server.stop_requested)
++      return;
++
+    LIST_FOR_EACH_ENTRY(client, &server.active_clients, head) {
+       if (FD_ISSET(client->in_fd, &read_fds)) {
+          client->in_fd_ready = true;
+@@ -493,6 +542,13 @@
+          perror("Failed to accept socket.");
+          exit(1);
+       }
++
++      if (server.client_count >= server.maximum_clients ||
++          !vtest_server_peer_is_allowed(new_fd)) {
++         close(new_fd);
++         return;
++      }
++      server.client_count++;
+ 
+       if (vtest_server_add_client(new_fd, new_fd)) {
+          perror("Failed to add client.");
+@@ -622,6 +678,8 @@
+       }
+ 
+       free(client);
++      if (server.client_count)
++         server.client_count--;
+    }
+ 
+    list_inithead(&server.inactive_clients);
+@@ -630,11 +688,11 @@
+ 
+ static void vtest_server_run(void)
+ {
+-   bool run = true;
++   bool run = !server.stop_requested;
+ 
+    if (server.read_file) {
+       vtest_server_open_read_file();
+-   } else {
++   } else if (server.socket < 0) {
+       vtest_server_open_socket();
+    }
+ 
+@@ -643,6 +701,8 @@
+       bool is_empty;
+ 
+       vtest_server_wait_clients();
++      if (server.stop_requested)
++         break;
+       vtest_server_dispatch_clients();
+ 
+       if (server.do_fork) {
+@@ -675,6 +735,12 @@
+    }
+ 
++   if (!list_is_empty(&server.active_clients)) {
++      vtest_server_inactivate_clients();
++      vtest_server_tidy_clients();
++      vtest_cleanup_renderer();
++   }
++
+    vtest_server_close_socket();
+ }
+ 
+ static const struct vtest_command {

@@ -36,6 +36,7 @@
     <string name="microphone_summary">Désactivé par défaut. Android demande l’autorisation avant toute capture audio.</string>
     <string name="diagnostics_title">Diagnostics d’exécution</string>
     <string name="diagnostics_empty">Lancez une vérification de PRoot, du graphisme, de l’audio et des périphériques d’entrée.</string>
+    <string name="diagnostic_guest_graphics">OpenGL invité</string>
     <string name="action_check">Lancer la vérification</string>
     <string name="runtime_unavailable">L’environnement PRoot vérifié n’est pas installé dans cette version.</string>
     <string name="desktop_preview">Surface du bureau Linux</string>
@@ -73,4 +74,5 @@
     <string name="error_session_start_failed">Le bureau Fedora n’a pas pu démarrer.</string>
     <string name="error_session_stop_failed">Le bureau Fedora n’a pas pu s’arrêter correctement.</string>
     <string name="error_display_disconnected">La connexion au bureau Fedora s’est interrompue de manière inattendue.</string>
+    <string name="error_graphics_runtime_lost">Le service graphique accéléré s’est arrêté de manière inattendue. Redémarrez la session pour utiliser le rendu logiciel.</string>
 </resources>

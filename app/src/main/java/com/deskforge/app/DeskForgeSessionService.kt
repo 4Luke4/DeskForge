@@ -26,6 +26,7 @@ import com.deskforge.app.model.AudioPlaybackStatus
 import com.deskforge.app.model.ClipboardFailure
 import com.deskforge.app.model.ClipboardTransportStatus
 import com.deskforge.app.model.DesktopViewport
+import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.SessionFailure
@@ -327,6 +328,18 @@ class DeskForgeSessionService : Service() {
                     clearAudioState()
                     mutableState.value = SessionState.Failed(
                         SessionFailure.DISPLAY_DISCONNECTED,
+                        recoverable = true,
+                    )
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    break
+                }
+                if (engine.graphicsSnapshot().status == GraphicsTransportStatus.FAILED) {
+                    engine.stopSession()
+                    clearClipboardState()
+                    clearAudioState()
+                    mutableState.value = SessionState.Failed(
+                        SessionFailure.GRAPHICS_RUNTIME_LOST,
                         recoverable = true,
                     )
                     stopForeground(STOP_FOREGROUND_REMOVE)

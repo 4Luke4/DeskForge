@@ -1,0 +1,87 @@
+--- a/vtest/vtest_renderer.c
++++ b/vtest/vtest_renderer.c
+@@ -58,6 +58,8 @@
+ #include "util/u_debug.h"
+ #include "util/u_math.h"
+ #include "util/u_memory.h"
++#include "util/u_format.h"
++#include "pipe/p_defines.h"
+ #include "util/u_pointer.h"
+ #include "util/u_hash_table.h"
+ #include "drm.h"
+@@ -1254,6 +1256,55 @@
+    return fd;
+ }
+ 
++static bool vtest_checked_multiply(uint64_t *value, uint64_t factor, uint64_t limit)
++{
++   if (factor && *value > limit / factor)
++      return false;
++   *value *= factor;
++   return true;
++}
++
++static bool vtest_estimate_resource_size(
++   const struct virgl_renderer_resource_create_args *args, uint64_t limit, uint64_t *size)
++{
++   if (args->target == PIPE_BUFFER) {
++      *size = args->width;
++      return *size <= limit;
++   }
++   if (!args->format || args->format >= VIRGL_FORMAT_MAX || args->last_level >= 32)
++      return false;
++
++   const enum pipe_format format = (enum pipe_format)args->format;
++   const uint64_t block_width = util_format_get_blockwidth(format);
++   const uint64_t block_height = util_format_get_blockheight(format);
++   const uint64_t block_depth = util_format_get_blockdepth(format);
++   const uint64_t block_size = util_format_get_blocksize(format);
++   const uint64_t samples = MAX2(args->nr_samples, 1);
++   const uint64_t array_size = MAX2(args->array_size, 1);
++   uint64_t total = 0;
++
++   for (uint32_t level = 0; level <= args->last_level; ++level) {
++      const uint64_t width = MAX2(args->width >> level, 1);
++      const uint64_t height = MAX2(args->height >> level, 1);
++      const uint64_t depth = MAX2(args->depth >> level, 1);
++      uint64_t level_size = (width + block_width - 1) / block_width;
++      const uint64_t height_blocks = (height + block_height - 1) / block_height;
++      const uint64_t depth_blocks = (depth + block_depth - 1) / block_depth;
++
++      if (!vtest_checked_multiply(&level_size, height_blocks, limit) ||
++          !vtest_checked_multiply(&level_size, depth_blocks, limit) ||
++          !vtest_checked_multiply(&level_size, array_size, limit) ||
++          !vtest_checked_multiply(&level_size, block_size, limit) ||
++          !vtest_checked_multiply(&level_size, samples, limit) ||
++          level_size > limit - total)
++         return false;
++      total += level_size;
++   }
++
++   *size = total;
++   return true;
++}
++
+ static int vtest_create_resource_internal(struct vtest_context *ctx,
+                                           uint32_t cmd_id,
+                                           struct virgl_renderer_resource_create_args *args,
+@@ -1267,16 +1318,10 @@
+    struct vtest_resource *res;
+    int ret;
+ 
+-   uint64_t estimated_size = 16;
+-   const uint32_t dimensions[] = {
+-      args->width, args->height, MAX2(args->depth, 1), MAX2(args->array_size, 1)
+-   };
+-   for (size_t index = 0; index < ARRAY_SIZE(dimensions); index++) {
+-      if (dimensions[index] && estimated_size > renderer.maximum_resource_bytes / dimensions[index])
+-         return -E2BIG;
+-      estimated_size *= dimensions[index];
+-   }
++   uint64_t estimated_size;
++   if (!vtest_estimate_resource_size(args, renderer.maximum_resource_bytes, &estimated_size))
++      return -E2BIG;
+    const uint64_t accounted_size = shm_size > estimated_size ? shm_size : estimated_size;
+    if (ctx->resource_count >= renderer.maximum_resources ||
+        shm_size > renderer.maximum_resource_bytes ||
+        accounted_size > renderer.maximum_aggregate_bytes - renderer.aggregate_bytes) {
