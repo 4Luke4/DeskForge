@@ -2,6 +2,7 @@ package com.deskforge.app.ui
 
 import android.content.Context
 import android.graphics.Color
+import android.hardware.display.DisplayManager
 import android.view.GestureDetector
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -42,6 +43,20 @@ class DesktopSurface(
     private var horizontalScrollRemainder = 0f
     private val gestureDetector = GestureDetector(context, DesktopGestureListener())
     private var inputConnection: RemoteInputConnection? = null
+    private val displayManager = context.getSystemService(DisplayManager::class.java)
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+
+        override fun onDisplayChanged(displayId: Int) {
+            if (display?.displayId != displayId || !holder.surface.isValid ||
+                width < MIN_WIDTH || height < MIN_HEIGHT) {
+                return
+            }
+            requestNativeRefreshRate(holder.surface)
+            callbacks.onSurfaceResized(viewport())
+        }
+    }
 
     init {
         isFocusable = true
@@ -50,6 +65,16 @@ class DesktopSurface(
         contentDescription = context.getString(R.string.desktop_preview)
         holder.addCallback(this)
         callbacks.onSurfaceViewReady(this)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        displayManager.registerDisplayListener(displayListener, handler)
+    }
+
+    override fun onDetachedFromWindow() {
+        displayManager.unregisterDisplayListener(displayListener)
+        super.onDetachedFromWindow()
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -167,14 +192,15 @@ class DesktopSurface(
         widthPx = width.coerceIn(MIN_WIDTH, MAX_DIMENSION),
         heightPx = height.coerceIn(MIN_HEIGHT, MAX_DIMENSION),
         densityDpi = resources.displayMetrics.densityDpi.coerceIn(120, 640),
-        refreshRateHz = preferredRefreshRate(),
+        targetRefreshRateHz = preferredRefreshRate(),
+        activeRefreshRateHz = activeRefreshRate(),
     )
 
     private fun requestNativeRefreshRate(surface: Surface) {
         runCatching {
             surface.setFrameRate(
                 preferredRefreshRate(),
-                Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
                 Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS,
             )
         }
@@ -183,15 +209,16 @@ class DesktopSurface(
     private fun preferredRefreshRate(): Float {
         val activeDisplay = display ?: return 60f
         val current = activeDisplay.mode
-        return activeDisplay.supportedModes
-            .asSequence()
-            .filter { mode ->
-                mode.physicalWidth == current.physicalWidth && mode.physicalHeight == current.physicalHeight
-            }
-            .maxOfOrNull { it.refreshRate }
+        // Alternative rates are the platform-declared seamless choices for this exact mode.
+        return (current.alternativeRefreshRates.asSequence() + sequenceOf(current.refreshRate))
+            .filter { it.isFinite() && it in 30f..240f }
+            .maxOrNull()
             ?.coerceIn(30f, 240f)
             ?: current.refreshRate.coerceIn(30f, 240f)
     }
+
+    private fun activeRefreshRate(): Float =
+        display?.mode?.refreshRate?.takeIf { it.isFinite() && it in 30f..240f } ?: 60f
 
     private fun sendWheel(x: Int, y: Int, amount: Float, vertical: Boolean) {
         if (amount == 0f) return

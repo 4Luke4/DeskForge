@@ -3,12 +3,12 @@
 ## Supported versions
 
 DeskForge has not reached a production release. Security fixes are currently provided only for the
-latest `0.7.x` development line.
+latest `0.8.x` development line.
 
 | Version | Supported |
 | --- | --- |
-| 0.7.x | Yes |
-| 0.6.x | No |
+| 0.8.x | Yes |
+| 0.7.x | No |
 | Earlier or unreleased snapshots | No |
 
 ## Reporting a vulnerability
@@ -30,5 +30,6 @@ PRoot fake-root is a compatibility mechanism, not an Android security boundary. 
 run with the DeskForge application UID and can reach only application-private files and documents
 the user deliberately shares. The Venus/VirGL vtest protocol runs in a non-exported isolated Android
 service and accepts only authenticated guest-UID peers through a pre-bound private socket. A
-vulnerability that crosses either boundary, bypasses explicit microphone consent, executes an
-unverified payload, or escapes archive validation is in scope.
+vulnerability that crosses either boundary, bypasses the bounded framebuffer or hardware-buffer
+producer/consumer rules, bypasses explicit microphone consent, executes an unverified payload, or
+escapes archive validation is in scope.

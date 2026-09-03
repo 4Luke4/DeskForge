@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Fedora デスクトップへの接続が予期せず終了しました。</string>
     <string name="error_graphics_runtime_lost">高速グラフィックスサービスが予期せず終了しました。ソフトウェア描画を使用するにはセッションを再起動してください。</string>
     <string name="error_renderer_unavailable">選択したレンダラーはこの端末では利用できません。自動または別のレンダラーを選択してください。</string>
+    <string name="presentation_preference_title">画面表示</string>
+    <string name="presentation_preference_summary">ネイティブは、ドライバーが対応している場合はハードウェアバッファーを、それ以外は移植性のある EGL アップロードを使用します。変更は次回のセッションから適用されます。</string>
+    <string name="presentation_preference_native">ネイティブ EGL（推奨）</string>
+    <string name="presentation_preference_rfb">互換 RFB</string>
+    <string name="presentation_rfb_warning">明示的な復旧モードです。ネイティブ表示が自動的に RFB へ切り替わることはありません。</string>
+    <string name="presentation_path_native_hardware_buffer">ネイティブ ハードウェア バッファー</string>
+    <string name="presentation_path_egl_upload">ネイティブ EGL アップロード</string>
+    <string name="presentation_path_rfb">互換 RFB</string>
+    <string name="diagnostic_refresh_rate">画面周波数</string>
+    <string name="diagnostic_refresh_rate_value">目標 %1$.1f Hz · 動作 %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">フレームペーシング</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · 最大 %3$.1f ms · ミス %4$d</string>
+    <string name="error_display_runtime_lost">ネイティブ画面表示が予期せず停止しました。セッションを再起動するか、互換 RFB を選択してください。</string>
 </resources>

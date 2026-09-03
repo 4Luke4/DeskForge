@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">La connessione al desktop Fedora si è interrotta in modo imprevisto.</string>
     <string name="error_graphics_runtime_lost">Il servizio grafico accelerato si è interrotto in modo imprevisto. Riavvia la sessione per usare il rendering software.</string>
     <string name="error_renderer_unavailable">Il renderer selezionato non è disponibile su questo dispositivo. Scegli Auto o un altro renderer.</string>
+    <string name="presentation_preference_title">Presentazione dello schermo</string>
+    <string name="presentation_preference_summary">La modalità nativa usa un buffer hardware quando il driver è idoneo, altrimenti un caricamento EGL portabile. Le modifiche si applicano alla sessione successiva.</string>
+    <string name="presentation_preference_native">EGL nativo (consigliato)</string>
+    <string name="presentation_preference_rfb">RFB di compatibilità</string>
+    <string name="presentation_rfb_warning">Modalità di ripristino esplicita; la presentazione nativa non passa silenziosamente a RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Buffer hardware nativo</string>
+    <string name="presentation_path_egl_upload">Caricamento EGL nativo</string>
+    <string name="presentation_path_rfb">RFB di compatibilità</string>
+    <string name="diagnostic_refresh_rate">Frequenza schermo</string>
+    <string name="diagnostic_refresh_rate_value">Obiettivo %1$.1f Hz · attiva %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Cadenza fotogrammi</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · max %3$.1f ms · %4$d mancati</string>
+    <string name="error_display_runtime_lost">La presentazione nativa si è interrotta in modo imprevisto. Riavvia la sessione o scegli RFB di compatibilità.</string>
 </resources>

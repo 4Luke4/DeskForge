@@ -18,7 +18,6 @@ import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RendererPreference
-import com.deskforge.app.model.PresentationPath
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -186,7 +185,6 @@ internal class GraphicsTransportController(
         val selected = RendererMode.Accelerated(
             backend = backend,
             hostRenderer = hostRenderer,
-            presentationPath = PresentationPath.RFB,
         )
         snapshot = GraphicsTransportSnapshot(
             status = GraphicsTransportStatus.READY,
@@ -215,7 +213,6 @@ internal class GraphicsTransportController(
                 rendererMode = RendererMode.Accelerated(
                     backend,
                     detail,
-                    PresentationPath.RFB,
                 ),
                 requestedRenderer = requestedRenderer,
                 refreshRateHz = requestedRefreshRateHz,

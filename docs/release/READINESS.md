@@ -1,6 +1,6 @@
 # Release Readiness
 
-DeskForge 0.7.0 is a development milestone. Merging guest graphics acceleration does not authorize a
+DeskForge 0.8.0 is a development milestone. Merging native EGL presentation does not authorize a
 production build or Google Play publication. Every production gate below requires retained evidence
 and an explicit maintainer decision.
 
@@ -10,7 +10,8 @@ and an explicit maintainer decision.
 | Emulator verification | Manually dispatched API 34/latest-stable ARM64 emulator jobs pass on protected `main` | No | Yes |
 | Runtime packaging | Two byte-identical API 34 ARM64 PRoot and Venus/VirGL builds; ELF/APK/AAB checks; retained PRoot/talloc/virglrenderer/libepoxy source and notices; protected-main emulator smoke evidence | No | Yes |
 | Fedora delivery | Signed-image/RPM verification and every generated Play asset pack below its enforced limit | No | Yes |
-| Desktop integration | Venus, VirGL, and llvmpipe selection, strict overrides, XFCE frame, touch, mouse, physical/software keyboard, manual clipboard, playback route changes, and permission-gated microphone evidence | No | Yes |
+| Desktop integration | Native hardware-buffer and EGL-upload presentation, explicit RFB recovery, Venus, VirGL, and llvmpipe selection, strict overrides, XFCE frame, touch, mouse, physical/software keyboard, manual clipboard, playback route changes, and permission-gated microphone evidence | No | Yes |
+| Frame pacing | Retained 10-minute warm-up plus 30-minute motion trace for every exposed 60/90/120 Hz mode, with target/active/submitted rates and p95/max frame times | No | Yes |
 | Physical qualification | Completed device matrix covering graphics, audio, input, thermals, lifecycle, and long sessions | No | Yes |
 | Localization | Native-speaker approval recorded for every non-English resource set | No | Yes |
 | Guest security boundary | Adversarial validation finds no same-UID Android IPC, inherited-descriptor, procfs, or device-node path around microphone consent | No | Yes |

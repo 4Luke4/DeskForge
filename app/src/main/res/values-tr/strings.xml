@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Fedora masaüstü bağlantısı beklenmedik şekilde sonlandı.</string>
     <string name="error_graphics_runtime_lost">Hızlandırılmış grafik hizmeti beklenmedik şekilde sonlandı. Yazılım işlemeyi kullanmak için oturumu yeniden başlatın.</string>
     <string name="error_renderer_unavailable">Seçilen işleyici bu cihazda kullanılamıyor. Otomatik veya başka bir işleyici seçin.</string>
+    <string name="presentation_preference_title">Ekran sunumu</string>
+    <string name="presentation_preference_summary">Yerel mod, sürücü uygunsa donanım arabelleği; değilse taşınabilir EGL yüklemesi kullanır. Değişiklikler sonraki oturumda uygulanır.</string>
+    <string name="presentation_preference_native">Yerel EGL (önerilen)</string>
+    <string name="presentation_preference_rfb">Uyumluluk RFB’si</string>
+    <string name="presentation_rfb_warning">Açık kurtarma modu; yerel sunum sessizce RFB’ye geçmez.</string>
+    <string name="presentation_path_native_hardware_buffer">Yerel donanım arabelleği</string>
+    <string name="presentation_path_egl_upload">Yerel EGL yüklemesi</string>
+    <string name="presentation_path_rfb">Uyumluluk RFB’si</string>
+    <string name="diagnostic_refresh_rate">Ekran yenileme hızı</string>
+    <string name="diagnostic_refresh_rate_value">Hedef %1$.1f Hz · etkin %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Kare ritmi</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · en çok %3$.1f ms · %4$d kaçırıldı</string>
+    <string name="error_display_runtime_lost">Yerel ekran sunumu beklenmedik şekilde durdu. Oturumu yeniden başlatın veya Uyumluluk RFB’sini seçin.</string>
 </resources>

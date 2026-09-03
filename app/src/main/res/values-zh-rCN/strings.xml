@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Fedora 桌面连接意外中断。</string>
     <string name="error_graphics_runtime_lost">加速图形服务意外终止。请重新启动会话以使用软件渲染。</string>
     <string name="error_renderer_unavailable">此设备无法使用所选渲染器。请选择自动或其他渲染器。</string>
+    <string name="presentation_preference_title">屏幕呈现</string>
+    <string name="presentation_preference_summary">驱动符合条件时，原生模式使用硬件缓冲区；否则使用可移植的 EGL 上传。更改将在下次会话中生效。</string>
+    <string name="presentation_preference_native">原生 EGL（推荐）</string>
+    <string name="presentation_preference_rfb">兼容 RFB</string>
+    <string name="presentation_rfb_warning">显式恢复模式；原生呈现不会静默切换到 RFB。</string>
+    <string name="presentation_path_native_hardware_buffer">原生硬件缓冲区</string>
+    <string name="presentation_path_egl_upload">原生 EGL 上传</string>
+    <string name="presentation_path_rfb">兼容 RFB</string>
+    <string name="diagnostic_refresh_rate">屏幕刷新率</string>
+    <string name="diagnostic_refresh_rate_value">目标 %1$.1f Hz · 当前 %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">帧节奏</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · 最大 %3$.1f ms · 错过 %4$d</string>
+    <string name="error_display_runtime_lost">原生屏幕呈现意外停止。请重新启动会话或选择兼容 RFB。</string>
 </resources>

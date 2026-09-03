@@ -138,13 +138,16 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     jint viewport_width,
     jint viewport_height,
     jint density_dpi,
-    jfloat refresh_rate_hz,
-    jstring renderer_preference_value) {
+    jfloat target_refresh_rate_hz,
+    jfloat active_refresh_rate_hz,
+    jstring renderer_preference_value,
+    jstring presentation_preference_value) {
     const std::string proot_path = from_jstring(environment, proot_path_value);
     const std::string proot_loader_path = from_jstring(environment, proot_loader_path_value);
     const std::string rootfs_path = from_jstring(environment, rootfs_path_value);
     const std::string runtime_directory_path = from_jstring(environment, runtime_directory_path_value);
     const std::string renderer_preference = from_jstring(environment, renderer_preference_value);
+    const std::string presentation_preference = from_jstring(environment, presentation_preference_value);
     std::lock_guard<std::mutex> lock(g_session_mutex);
 
     if (active_session_pid() > 0) {
@@ -175,9 +178,12 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     if (surface == nullptr || viewport_width < 640 || viewport_width > 4096 ||
         viewport_height < 480 || viewport_height > 4096 || density_dpi < 120 || density_dpi > 640 ||
         static_cast<int64_t>(viewport_width) * viewport_height > 16'777'216 ||
-        !std::isfinite(refresh_rate_hz) || refresh_rate_hz < 30.0F || refresh_rate_hz > 240.0F ||
+        !std::isfinite(target_refresh_rate_hz) || target_refresh_rate_hz < 30.0F ||
+        target_refresh_rate_hz > 240.0F || !std::isfinite(active_refresh_rate_hz) ||
+        active_refresh_rate_hz < 30.0F || active_refresh_rate_hz > 240.0F ||
         (renderer_preference != "auto" && renderer_preference != "venus" &&
-         renderer_preference != "virgl" && renderer_preference != "llvmpipe")) {
+         renderer_preference != "virgl" && renderer_preference != "llvmpipe") ||
+        (presentation_preference != "native" && presentation_preference != "rfb")) {
         set_error("The desktop viewport is invalid");
         return -1;
     }
@@ -214,7 +220,7 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         setenv("LANG", "C.UTF-8", 1);
         setenv("DISPLAY", ":0", 1);
         setenv("XDG_RUNTIME_DIR", "/run/deskforge", 1);
-        const std::string refresh_rate = std::to_string(refresh_rate_hz);
+        const std::string refresh_rate = std::to_string(std::lround(target_refresh_rate_hz));
         // Keep executable code in the signed native-lib directory; code cache is scratch only.
         if (setenv("PROOT_LOADER", proot_loader_path.c_str(), 1) != 0 ||
             setenv("PROOT_TMP_DIR", runtime_directory_path.c_str(), 1) != 0 ||
@@ -306,7 +312,14 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     const std::string rfb_socket = runtime_directory_path + "/rfb.sock";
     auto rfb_client = std::make_unique<RfbClient>();
     if (!rfb_client->connect_and_start(
-            environment, surface, rfb_socket, viewport_width, viewport_height)) {
+            environment,
+            surface,
+            rfb_socket,
+            viewport_width,
+            viewport_height,
+            presentation_preference == "native",
+            target_refresh_rate_hz,
+            active_refresh_rate_hz)) {
         const std::string display_error = rfb_client->last_error();
         rfb_client->stop();
         audio_bridge->stop();
@@ -380,9 +393,17 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeAttachSurface(
     jobject,
     jobject surface,
     jint width,
-    jint height) {
+    jint height,
+    jfloat target_refresh_rate_hz,
+    jfloat active_refresh_rate_hz) {
     std::lock_guard<std::mutex> lock(g_session_mutex);
-    return g_rfb_client != nullptr && g_rfb_client->attach_surface(environment, surface, width, height)
+    return g_rfb_client != nullptr && g_rfb_client->attach_surface(
+        environment,
+        surface,
+        width,
+        height,
+        target_refresh_rate_hz,
+        active_refresh_rate_hz)
         ? JNI_TRUE
         : JNI_FALSE;
 }
@@ -395,9 +416,20 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeDetachSurface(JNIEnv*,
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeResizeDisplay(
-    JNIEnv*, jobject, jint width, jint height) {
+    JNIEnv*,
+    jobject,
+    jint width,
+    jint height,
+    jfloat target_refresh_rate_hz,
+    jfloat active_refresh_rate_hz) {
     std::lock_guard<std::mutex> lock(g_session_mutex);
-    return g_rfb_client != nullptr && g_rfb_client->resize(width, height) ? JNI_TRUE : JNI_FALSE;
+    if (g_rfb_client == nullptr) return JNI_FALSE;
+    g_rfb_client->update_display_mode(
+        width,
+        height,
+        target_refresh_rate_hz,
+        active_refresh_rate_hz);
+    return g_rfb_client->resize(width, height) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -505,6 +537,43 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeDisplayConnected(JNIEnv*, jobject) {
     std::lock_guard<std::mutex> lock(g_session_mutex);
     return g_rfb_client != nullptr && g_rfb_client->connected() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jdoubleArray JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativePresentationSnapshot(
+    JNIEnv* environment, jobject) {
+    NativePresentationSnapshot snapshot{};
+    {
+        std::lock_guard<std::mutex> lock(g_session_mutex);
+        if (g_rfb_client != nullptr) snapshot = g_rfb_client->presentation_snapshot();
+    }
+    const std::array<jdouble, 8> values{
+        static_cast<jdouble>(snapshot.status),
+        static_cast<jdouble>(snapshot.path),
+        snapshot.target_refresh_rate_hz,
+        snapshot.active_refresh_rate_hz,
+        snapshot.submitted_frames_per_second,
+        static_cast<jdouble>(snapshot.missed_frame_budget_count),
+        snapshot.p95_frame_time_ms,
+        snapshot.maximum_frame_time_ms,
+    };
+    jdoubleArray result = environment->NewDoubleArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        environment->SetDoubleArrayRegion(
+            result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativePresentationDetail(
+    JNIEnv* environment, jobject) {
+    std::string detail = "Presentation runtime is unavailable";
+    {
+        std::lock_guard<std::mutex> lock(g_session_mutex);
+        if (g_rfb_client != nullptr) detail = g_rfb_client->presentation_detail();
+    }
+    return environment->NewStringUTF(detail.c_str());
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL

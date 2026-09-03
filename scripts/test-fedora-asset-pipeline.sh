@@ -94,7 +94,7 @@ jq --null-input \
     distroId: "fedora-xfce-44",
     release: "44",
     desktopHostVersion: "1.16.2-4.fc44",
-    workspaceIntegrationVersion: 3,
+    workspaceIntegrationVersion: 4,
     audioHostPackages: [
       "pipewire-1.6.2-1.fc44.aarch64",
       "pipewire-pulseaudio-1.6.2-1.fc44.aarch64",

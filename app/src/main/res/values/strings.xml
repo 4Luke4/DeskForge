@@ -85,4 +85,17 @@
     <string name="error_display_disconnected">The Fedora desktop connection ended unexpectedly.</string>
     <string name="error_graphics_runtime_lost">The accelerated graphics service ended unexpectedly. Restart the session to use software rendering.</string>
     <string name="error_renderer_unavailable">The selected renderer is unavailable on this device. Choose Auto or another renderer.</string>
+    <string name="presentation_preference_title">Display presentation</string>
+    <string name="presentation_preference_summary">Native uses a hardware buffer when the driver qualifies and a portable EGL upload otherwise. Changes apply to the next session.</string>
+    <string name="presentation_preference_native">Native EGL (recommended)</string>
+    <string name="presentation_preference_rfb">Compatibility RFB</string>
+    <string name="presentation_rfb_warning">Explicit recovery mode; native presentation will not silently switch to RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Native hardware buffer</string>
+    <string name="presentation_path_egl_upload">Native EGL upload</string>
+    <string name="presentation_path_rfb">Compatibility RFB</string>
+    <string name="diagnostic_refresh_rate">Display rate</string>
+    <string name="diagnostic_refresh_rate_value">%1$.1f Hz target · %2$.1f Hz active</string>
+    <string name="diagnostic_frame_pacing">Frame pacing</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · max %3$.1f ms · %4$d missed</string>
+    <string name="error_display_runtime_lost">Native display presentation stopped unexpectedly. Restart the session or select Compatibility RFB.</string>
 </resources>

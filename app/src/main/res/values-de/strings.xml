@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Die Verbindung zum Fedora-Desktop wurde unerwartet beendet.</string>
     <string name="error_graphics_runtime_lost">Der beschleunigte Grafikdienst wurde unerwartet beendet. Starten Sie die Sitzung neu, um Software-Rendering zu verwenden.</string>
     <string name="error_renderer_unavailable">Der ausgewählte Renderer ist auf diesem Gerät nicht verfügbar. Wählen Sie Automatisch oder einen anderen Renderer.</string>
+    <string name="presentation_preference_title">Bildausgabe</string>
+    <string name="presentation_preference_summary">Nativ verwendet einen Hardwarepuffer, wenn der Treiber geeignet ist, andernfalls einen portablen EGL-Upload. Änderungen gelten ab der nächsten Sitzung.</string>
+    <string name="presentation_preference_native">Natives EGL (empfohlen)</string>
+    <string name="presentation_preference_rfb">Kompatibilitäts-RFB</string>
+    <string name="presentation_rfb_warning">Expliziter Wiederherstellungsmodus; die native Ausgabe wechselt nicht unbemerkt zu RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Nativer Hardwarepuffer</string>
+    <string name="presentation_path_egl_upload">Nativer EGL-Upload</string>
+    <string name="presentation_path_rfb">Kompatibilitäts-RFB</string>
+    <string name="diagnostic_refresh_rate">Bildwiederholrate</string>
+    <string name="diagnostic_refresh_rate_value">%1$.1f Hz Ziel · %2$.1f Hz aktiv</string>
+    <string name="diagnostic_frame_pacing">Frame-Pacing</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · max. %3$.1f ms · %4$d verpasst</string>
+    <string name="error_display_runtime_lost">Die native Bildausgabe wurde unerwartet beendet. Starten Sie die Sitzung neu oder wählen Sie Kompatibilitäts-RFB.</string>
 </resources>

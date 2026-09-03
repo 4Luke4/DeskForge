@@ -21,6 +21,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.deskforge.app.engine.NativeDeskForgeEngine
 import com.deskforge.app.graphics.RendererPreferenceStore
+import com.deskforge.app.presentation.PresentationPreferenceStore
 import com.deskforge.app.model.DesktopViewport
 import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.ClipboardFailure
@@ -29,6 +30,8 @@ import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import com.deskforge.app.model.RendererPreference
+import com.deskforge.app.model.PresentationPreference
+import com.deskforge.app.model.PresentationSnapshot
 import com.deskforge.app.ui.DesktopSurfaceCallbacks
 import com.deskforge.app.ui.DesktopSurface
 import com.deskforge.app.ui.DeskForgeApp
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
     private val workspaceViewModel: WorkspaceViewModel by viewModels()
     private lateinit var diagnosticsEngine: NativeDeskForgeEngine
     private lateinit var rendererPreferenceStore: RendererPreferenceStore
+    private lateinit var presentationPreferenceStore: PresentationPreferenceStore
     private var sessionState: SessionState = SessionState.Idle
         set(value) {
             field = value
@@ -54,9 +58,11 @@ class MainActivity : ComponentActivity() {
         SessionClipboardState.Unavailable,
     )
     private val audioRenderState = androidx.compose.runtime.mutableStateOf(SessionAudioState())
+    private val presentationRenderState = androidx.compose.runtime.mutableStateOf(PresentationSnapshot())
     private val rootfsState = androidx.compose.runtime.mutableStateOf<String?>(null)
     private val updateRequiredState = androidx.compose.runtime.mutableStateOf(false)
     private val rendererPreferenceState = androidx.compose.runtime.mutableStateOf(RendererPreference.AUTO)
+    private val presentationPreferenceState = androidx.compose.runtime.mutableStateOf(PresentationPreference.NATIVE)
     private var sessionService: DeskForgeSessionService? = null
     private var serviceBound = false
     private var stateCollection: Job? = null
@@ -111,6 +117,11 @@ class MainActivity : ComponentActivity() {
                         audioRenderState.value = state
                     }
                 }
+                launch {
+                    localBinder.service.presentationState.collectLatest { state ->
+                        presentationRenderState.value = state
+                    }
+                }
             }
             attachCurrentSurface()
         }
@@ -122,6 +133,7 @@ class MainActivity : ComponentActivity() {
             serviceBound = false
             clipboardRenderState.value = SessionClipboardState.Unavailable
             audioRenderState.value = SessionAudioState()
+            presentationRenderState.value = PresentationSnapshot()
         }
     }
 
@@ -130,7 +142,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         diagnosticsEngine = NativeDeskForgeEngine(this)
         rendererPreferenceStore = RendererPreferenceStore(this)
+        presentationPreferenceStore = PresentationPreferenceStore(this)
         rendererPreferenceState.value = rendererPreferenceStore.get()
+        presentationPreferenceState.value = presentationPreferenceStore.get()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 workspaceViewModel.state.collectLatest(::applyWorkspaceState)
@@ -144,9 +158,11 @@ class MainActivity : ComponentActivity() {
                     capabilities = capabilityState.value,
                     clipboardState = clipboardRenderState.value,
                     audioState = audioRenderState.value,
+                    presentationSnapshot = presentationRenderState.value,
                     isInstalled = rootfsState.value != null,
                     requiresUpdate = updateRequiredState.value,
                     rendererPreference = rendererPreferenceState.value,
+                    presentationPreference = presentationPreferenceState.value,
                     rendererPreferenceEnabled = sessionState is SessionState.Idle ||
                         sessionState is SessionState.Failed,
                     desktopCallbacks = DesktopSurfaceCallbacks(
@@ -167,6 +183,7 @@ class MainActivity : ComponentActivity() {
                     onCopyFromDesktop = { sessionService?.requestDesktopClipboard() },
                     onMicrophoneToggle = ::onMicrophoneToggle,
                     onRendererPreferenceChange = ::setRendererPreference,
+                    onPresentationPreferenceChange = ::setPresentationPreference,
                 )
             }
         }
@@ -184,6 +201,7 @@ class MainActivity : ComponentActivity() {
         sessionService = null
         clipboardRenderState.value = SessionClipboardState.Unavailable
         audioRenderState.value = SessionAudioState()
+        presentationRenderState.value = PresentationSnapshot()
         stateCollection?.cancel()
         stateCollection = null
         super.onStop()
@@ -212,6 +230,10 @@ class MainActivity : ComponentActivity() {
                 DeskForgeSessionService.EXTRA_RENDERER_PREFERENCE,
                 rendererPreferenceState.value.name,
             )
+            .putExtra(
+                DeskForgeSessionService.EXTRA_PRESENTATION_PREFERENCE,
+                presentationPreferenceState.value.name,
+            )
         ContextCompat.startForegroundService(this, intent)
         attachCurrentSurface()
     }
@@ -220,6 +242,14 @@ class MainActivity : ComponentActivity() {
         if (sessionState !is SessionState.Idle && sessionState !is SessionState.Failed) return
         rendererPreferenceStore.set(preference)
         rendererPreferenceState.value = preference
+        capabilityState.value = null
+    }
+
+    private fun setPresentationPreference(preference: PresentationPreference) {
+        if (sessionState !is SessionState.Idle && sessionState !is SessionState.Failed) return
+        presentationPreferenceStore.set(preference)
+        presentationPreferenceState.value = preference
+        presentationRenderState.value = PresentationSnapshot(preference = preference)
         capabilityState.value = null
     }
 

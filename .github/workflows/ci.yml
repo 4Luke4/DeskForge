@@ -51,7 +51,7 @@ jobs:
             (.binary.loader.sizeBytes >= 0)
           ' config/proot/version.json
           jq -e '
-            .schemaVersion == 5 and .workspaceIntegrationVersion == 3 and
+            .schemaVersion == 5 and .workspaceIntegrationVersion == 4 and
             .release and .imageUrl and
             (.sha256 | test("^[a-f0-9]{64}$")) and (.sizeBytes > 0) and
             .desktopHost.version and .desktopHost.executable == "/usr/bin/Xvnc" and

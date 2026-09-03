@@ -59,8 +59,37 @@ bool RfbClient::connect_and_start(
     jobject surface,
     const std::string& socket_path,
     int viewport_width,
-    int viewport_height) {
-    if (!attach_surface(environment, surface, viewport_width, viewport_height)) return false;
+    int viewport_height,
+    bool native_presentation,
+    float target_refresh_rate_hz,
+    float active_refresh_rate_hz) {
+    native_presentation_ = native_presentation;
+    if (native_presentation_) {
+        native_presenter_ = std::make_unique<NativeEglPresenter>();
+        if (!native_presenter_->start(
+                environment,
+                surface,
+                viewport_width,
+                viewport_height,
+                target_refresh_rate_hz,
+                active_refresh_rate_hz)) {
+            fail(native_presenter_->detail());
+            stop();
+            return false;
+        }
+    } else if (!attach_surface(
+                   environment,
+                   surface,
+                   viewport_width,
+                   viewport_height,
+                   target_refresh_rate_hz,
+                   active_refresh_rate_hz)) {
+        return false;
+    }
+    legacy_presentation_snapshot_.status = NativePresentationStatus::Ready;
+    legacy_presentation_snapshot_.path = NativePresentationPath::Rfb;
+    legacy_presentation_snapshot_.target_refresh_rate_hz = target_refresh_rate_hz;
+    legacy_presentation_snapshot_.active_refresh_rate_hz = active_refresh_rate_hz;
     if (!connect_socket(socket_path) || !negotiate()) {
         stop();
         return false;
@@ -70,7 +99,22 @@ bool RfbClient::connect_and_start(
     return true;
 }
 
-bool RfbClient::attach_surface(JNIEnv* environment, jobject surface, int width, int height) {
+bool RfbClient::attach_surface(
+    JNIEnv* environment,
+    jobject surface,
+    int width,
+    int height,
+    float target_refresh_rate_hz,
+    float active_refresh_rate_hz) {
+    if (native_presentation_) {
+        return native_presenter_ != nullptr && native_presenter_->attach_surface(
+            environment,
+            surface,
+            width,
+            height,
+            target_refresh_rate_hz,
+            active_refresh_rate_hz);
+    }
     if (surface == nullptr || width <= 0 || height <= 0) {
         fail("The Android desktop surface is unavailable");
         return false;
@@ -90,16 +134,46 @@ bool RfbClient::attach_surface(JNIEnv* environment, jobject surface, int width, 
     window_ = candidate;
     viewport_width_ = width;
     viewport_height_ = height;
+    legacy_presentation_snapshot_.status = NativePresentationStatus::Ready;
+    legacy_presentation_snapshot_.target_refresh_rate_hz = target_refresh_rate_hz;
+    legacy_presentation_snapshot_.active_refresh_rate_hz = active_refresh_rate_hz;
     render_locked();
     return true;
 }
 
 void RfbClient::detach_surface() {
+    if (native_presentation_) {
+        if (native_presenter_ != nullptr) native_presenter_->detach_surface();
+        return;
+    }
     std::lock_guard<std::mutex> lock(state_mutex_);
     if (window_ != nullptr) {
         ANativeWindow_release(window_);
         window_ = nullptr;
     }
+    legacy_presentation_snapshot_.status = NativePresentationStatus::SurfaceDetached;
+}
+
+void RfbClient::update_display_mode(
+    int width,
+    int height,
+    float target_refresh_rate_hz,
+    float active_refresh_rate_hz) {
+    if (native_presentation_) {
+        if (native_presenter_ != nullptr) {
+            native_presenter_->update_display_mode(
+                width,
+                height,
+                target_refresh_rate_hz,
+                active_refresh_rate_hz);
+        }
+        return;
+    }
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    viewport_width_ = width;
+    viewport_height_ = height;
+    legacy_presentation_snapshot_.target_refresh_rate_hz = target_refresh_rate_hz;
+    legacy_presentation_snapshot_.active_refresh_rate_hz = active_refresh_rate_hz;
 }
 
 bool RfbClient::connect_socket(const std::string& socket_path) {
@@ -323,6 +397,25 @@ bool RfbClient::read_framebuffer_update() {
     if (!read_exact(update_header.data(), update_header.size())) return false;
     const uint16_t rectangle_count = read_u16(update_header.data() + 1);
     if (rectangle_count > 4096) return false;
+    int damage_x = 0;
+    int damage_y = 0;
+    int damage_right = 0;
+    int damage_bottom = 0;
+    bool has_damage = false;
+    const auto merge_damage = [&](int x, int y, int width, int height) {
+        if (!has_damage) {
+            damage_x = x;
+            damage_y = y;
+            damage_right = x + width;
+            damage_bottom = y + height;
+            has_damage = true;
+        } else {
+            damage_x = std::min(damage_x, x);
+            damage_y = std::min(damage_y, y);
+            damage_right = std::max(damage_right, x + width);
+            damage_bottom = std::max(damage_bottom, y + height);
+        }
+    };
     for (uint16_t index = 0; index < rectangle_count; ++index) {
         std::array<uint8_t, 12> rectangle{};
         if (!read_exact(rectangle.data(), rectangle.size())) return false;
@@ -333,6 +426,7 @@ bool RfbClient::read_framebuffer_update() {
         const int32_t encoding = static_cast<int32_t>(read_u32(rectangle.data() + 8));
         if (encoding == kEncodingDesktopSize) {
             if (!set_framebuffer_size(width, height)) return false;
+            merge_damage(0, 0, width, height);
             continue;
         }
         if (encoding == kEncodingExtendedDesktopSize) {
@@ -356,6 +450,7 @@ bool RfbClient::read_framebuffer_update() {
                 continue;
             }
             if (!set_framebuffer_size(width, height)) return false;
+            merge_damage(0, 0, width, height);
             const int requested_width = requested_width_.load();
             const int requested_height = requested_height_.load();
             if (requested_width > 0 && requested_height > 0 &&
@@ -385,6 +480,7 @@ bool RfbClient::read_framebuffer_update() {
                     source.data() + source_offset,
                     static_cast<size_t>(width) * kPixelBytes);
             }
+            merge_damage(x, y, width, height);
         } else if (encoding == kEncodingCopyRect) {
             std::array<uint8_t, 4> source_position{};
             if (!read_exact(source_position.data(), source_position.size())) return false;
@@ -414,13 +510,25 @@ bool RfbClient::read_framebuffer_update() {
                             copied.data() + static_cast<size_t>(row) * width * kPixelBytes,
                             static_cast<size_t>(width) * kPixelBytes);
             }
+            merge_damage(x, y, width, height);
         } else {
             return false;
         }
     }
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        render_locked();
+        if (has_damage && native_presentation_ && native_presenter_ != nullptr) {
+            native_presenter_->submit(
+                framebuffer_,
+                framebuffer_width_,
+                framebuffer_height_,
+                damage_x,
+                damage_y,
+                damage_right - damage_x,
+                damage_bottom - damage_y);
+        } else if (has_damage) {
+            render_locked();
+        }
     }
     return request_update(true);
 }
@@ -610,6 +718,19 @@ std::optional<std::vector<uint8_t>> RfbClient::take_clipboard_text() {
     return text;
 }
 
+NativePresentationSnapshot RfbClient::presentation_snapshot() const {
+    if (native_presentation_ && native_presenter_ != nullptr) {
+        return native_presenter_->snapshot();
+    }
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return legacy_presentation_snapshot_;
+}
+
+std::string RfbClient::presentation_detail() const {
+    if (native_presentation_ && native_presenter_ != nullptr) return native_presenter_->detail();
+    return "Explicit compatibility RFB presentation is active";
+}
+
 bool RfbClient::request_update(bool incremental) {
     std::array<uint8_t, 10> message{
         3,
@@ -668,6 +789,10 @@ void RfbClient::stop() {
     if (socket_ >= 0) {
         close(socket_);
         socket_ = -1;
+    }
+    if (native_presenter_ != nullptr) {
+        native_presenter_->stop();
+        native_presenter_.reset();
     }
     detach_surface();
     std::lock_guard<std::mutex> lock(state_mutex_);

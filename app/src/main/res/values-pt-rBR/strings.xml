@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">A conexão com a área de trabalho Fedora foi encerrada inesperadamente.</string>
     <string name="error_graphics_runtime_lost">O serviço de gráficos acelerados foi encerrado inesperadamente. Reinicie a sessão para usar a renderização por software.</string>
     <string name="error_renderer_unavailable">O renderizador selecionado não está disponível neste dispositivo. Escolha Automático ou outro renderizador.</string>
+    <string name="presentation_preference_title">Apresentação da tela</string>
+    <string name="presentation_preference_summary">O modo nativo usa um buffer de hardware quando o driver é compatível e um envio EGL portátil nos demais casos. As alterações valem na próxima sessão.</string>
+    <string name="presentation_preference_native">EGL nativo (recomendado)</string>
+    <string name="presentation_preference_rfb">RFB de compatibilidade</string>
+    <string name="presentation_rfb_warning">Modo de recuperação explícito; a apresentação nativa não muda silenciosamente para RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Buffer de hardware nativo</string>
+    <string name="presentation_path_egl_upload">Envio EGL nativo</string>
+    <string name="presentation_path_rfb">RFB de compatibilidade</string>
+    <string name="diagnostic_refresh_rate">Taxa da tela</string>
+    <string name="diagnostic_refresh_rate_value">Meta %1$.1f Hz · ativa %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Cadência de quadros</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · máx. %3$.1f ms · %4$d perdidos</string>
+    <string name="error_display_runtime_lost">A apresentação nativa foi encerrada inesperadamente. Reinicie a sessão ou escolha RFB de compatibilidade.</string>
 </resources>

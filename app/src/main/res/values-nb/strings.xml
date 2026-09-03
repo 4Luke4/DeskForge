@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Tilkoblingen til Fedora-skrivebordet ble uventet avsluttet.</string>
     <string name="error_graphics_runtime_lost">Den akselererte grafikktjenesten ble uventet avsluttet. Start økten på nytt for å bruke programvaregjengivelse.</string>
     <string name="error_renderer_unavailable">Den valgte gjengiveren er ikke tilgjengelig på denne enheten. Velg Auto eller en annen gjengiver.</string>
+    <string name="presentation_preference_title">Skjermpresentasjon</string>
+    <string name="presentation_preference_summary">Innebygd bruker en maskinvarebuffer når driveren kvalifiserer, ellers en portabel EGL-opplasting. Endringer gjelder fra neste økt.</string>
+    <string name="presentation_preference_native">Innebygd EGL (anbefalt)</string>
+    <string name="presentation_preference_rfb">Kompatibilitets-RFB</string>
+    <string name="presentation_rfb_warning">Eksplisitt gjenopprettingsmodus; innebygd presentasjon bytter ikke stille til RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Innebygd maskinvarebuffer</string>
+    <string name="presentation_path_egl_upload">Innebygd EGL-opplasting</string>
+    <string name="presentation_path_rfb">Kompatibilitets-RFB</string>
+    <string name="diagnostic_refresh_rate">Skjermfrekvens</string>
+    <string name="diagnostic_refresh_rate_value">Mål %1$.1f Hz · aktiv %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Bildekadensering</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · maks %3$.1f ms · %4$d bommet</string>
+    <string name="error_display_runtime_lost">Innebygd skjermpresentasjon stoppet uventet. Start økten på nytt, eller velg Kompatibilitets-RFB.</string>
 </resources>

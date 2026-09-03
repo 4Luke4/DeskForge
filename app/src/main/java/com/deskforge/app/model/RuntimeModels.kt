@@ -23,7 +23,28 @@ enum class RendererPreference { AUTO, VENUS, VIRGL, LLVMPIPE }
 
 enum class GraphicsBackend { VENUS_ZINK, VIRGL, LLVMPIPE }
 
-enum class PresentationPath { DIRECT_GPU, SHARED_MEMORY, RFB }
+/** User policy applied only at a session boundary; Native never silently falls back to RFB. */
+enum class PresentationPreference { NATIVE, RFB }
+
+/** Ordinals are part of the JNI snapshot contract; append new values and update native together. */
+enum class PresentationPath { NATIVE_HARDWARE_BUFFER, NATIVE_EGL_UPLOAD, RFB }
+
+/** Ordinals are part of the JNI snapshot contract; append new values and update native together. */
+enum class PresentationStatus { UNAVAILABLE, STARTING, READY, SURFACE_DETACHED, FAILED, STOPPED }
+
+/** Capability-relative presentation evidence, independent from the guest renderer decision. */
+data class PresentationSnapshot(
+    val preference: PresentationPreference = PresentationPreference.NATIVE,
+    val status: PresentationStatus = PresentationStatus.UNAVAILABLE,
+    val path: PresentationPath = PresentationPath.NATIVE_EGL_UPLOAD,
+    val detail: String = "Presentation runtime has not been started",
+    val targetRefreshRateHz: Float = 0f,
+    val activeRefreshRateHz: Float = 0f,
+    val submittedFramesPerSecond: Float = 0f,
+    val missedFrameBudgetCount: Long = 0,
+    val p95FrameTimeMs: Float = 0f,
+    val maximumFrameTimeMs: Float = 0f,
+)
 
 enum class GraphicsFallbackReason {
     RUNTIME_UNAVAILABLE,
@@ -43,14 +64,12 @@ sealed interface RendererMode {
     data class Accelerated(
         val backend: GraphicsBackend,
         val hostRenderer: String,
-        val presentationPath: PresentationPath,
     ) : RendererMode
 
     data class Software(
         val backend: GraphicsBackend = GraphicsBackend.LLVMPIPE,
         val reason: GraphicsFallbackReason,
         val detail: String,
-        val presentationPath: PresentationPath = PresentationPath.RFB,
     ) : RendererMode
 }
 
@@ -70,21 +89,24 @@ data class RuntimeCapabilities(
     val guestGraphicsAvailable: Boolean,
     val audioAvailable: Boolean,
     val rendererMode: RendererMode,
+    val presentation: PresentationSnapshot,
     val detail: String,
 )
 
-/** Pixel geometry and the selected same-resolution display mode supplied to the display runtime. */
+/** Pixel geometry plus requested and observed rates supplied to the presentation runtime. */
 data class DesktopViewport(
     val widthPx: Int,
     val heightPx: Int,
     val densityDpi: Int,
-    val refreshRateHz: Float = 60f,
+    val targetRefreshRateHz: Float = 60f,
+    val activeRefreshRateHz: Float = 60f,
 ) {
     init {
         require(widthPx in 640..4096 && heightPx in 480..4096)
         require(widthPx.toLong() * heightPx <= 16_777_216L)
         require(densityDpi in 120..640)
-        require(refreshRateHz.isFinite() && refreshRateHz in 30f..240f)
+        require(targetRefreshRateHz.isFinite() && targetRefreshRateHz in 30f..240f)
+        require(activeRefreshRateHz.isFinite() && activeRefreshRateHz in 30f..240f)
     }
 }
 
@@ -108,7 +130,11 @@ sealed interface SessionState {
     data object Idle : SessionState
     data class Preparing(val progress: Float) : SessionState
     data object Starting : SessionState
-    data class Running(val processId: Int, val rendererMode: RendererMode) : SessionState
+    data class Running(
+        val processId: Int,
+        val rendererMode: RendererMode,
+        val presentationPath: PresentationPath,
+    ) : SessionState
     data object Stopping : SessionState
     data class Failed(val reason: SessionFailure, val recoverable: Boolean) : SessionState
 }

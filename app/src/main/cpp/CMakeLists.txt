@@ -21,6 +21,7 @@ add_library(
     deskforge_engine
     SHARED
     audio_bridge.cpp
+    native_egl_presenter.cpp
     native_engine.cpp
     rfb_client.cpp
     rfb_clipboard.cpp
@@ -34,6 +35,8 @@ target_link_options(deskforge_engine PRIVATE -Wl,-z,relro,-z,now)
 find_library(android_log_library log REQUIRED)
 find_library(aaudio_library aaudio REQUIRED)
 find_library(android_library android REQUIRED)
+find_library(egl_library EGL REQUIRED)
+find_library(gles_library GLESv2 REQUIRED)
 find_library(zlib_library z REQUIRED)
 
 target_link_libraries(
@@ -42,5 +45,7 @@ target_link_libraries(
     ${android_log_library}
     ${aaudio_library}
     ${android_library}
+    ${egl_library}
+    ${gles_library}
     ${zlib_library}
 )

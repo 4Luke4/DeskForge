@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">La conexión con el escritorio Fedora terminó inesperadamente.</string>
     <string name="error_graphics_runtime_lost">El servicio de gráficos acelerados terminó inesperadamente. Reinicia la sesión para usar el renderizado por software.</string>
     <string name="error_renderer_unavailable">El renderizador seleccionado no está disponible en este dispositivo. Selecciona Automático u otro renderizador.</string>
+    <string name="presentation_preference_title">Presentación de pantalla</string>
+    <string name="presentation_preference_summary">Nativo usa un búfer de hardware si el controlador es compatible y una carga EGL portátil en caso contrario. Los cambios se aplican en la siguiente sesión.</string>
+    <string name="presentation_preference_native">EGL nativo (recomendado)</string>
+    <string name="presentation_preference_rfb">RFB de compatibilidad</string>
+    <string name="presentation_rfb_warning">Modo de recuperación explícito; la presentación nativa no cambiará a RFB de forma silenciosa.</string>
+    <string name="presentation_path_native_hardware_buffer">Búfer de hardware nativo</string>
+    <string name="presentation_path_egl_upload">Carga EGL nativa</string>
+    <string name="presentation_path_rfb">RFB de compatibilidad</string>
+    <string name="diagnostic_refresh_rate">Frecuencia de pantalla</string>
+    <string name="diagnostic_refresh_rate_value">Objetivo: %1$.1f Hz · activa: %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Ritmo de fotogramas</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f fps · p95 %2$.1f ms · máx. %3$.1f ms · %4$d perdidos</string>
+    <string name="error_display_runtime_lost">La presentación nativa se detuvo inesperadamente. Reinicia la sesión o selecciona RFB de compatibilidad.</string>
 </resources>

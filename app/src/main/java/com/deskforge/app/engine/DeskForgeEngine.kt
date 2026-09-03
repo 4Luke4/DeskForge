@@ -6,6 +6,8 @@ import com.deskforge.app.model.AudioTransportSnapshot
 import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.GraphicsTransportSnapshot
+import com.deskforge.app.model.PresentationPreference
+import com.deskforge.app.model.PresentationSnapshot
 import com.deskforge.app.model.SessionState
 import com.deskforge.app.model.RendererPreference
 
@@ -15,11 +17,14 @@ interface DeskForgeEngine {
 
     fun graphicsSnapshot(): GraphicsTransportSnapshot
 
+    fun presentationSnapshot(): PresentationSnapshot
+
     fun startSession(
         rootfsPath: String,
         surface: Surface,
         viewport: DesktopViewport,
         rendererPreference: RendererPreference,
+        presentationPreference: PresentationPreference,
     ): SessionState
 
     fun stopSession(): SessionState
