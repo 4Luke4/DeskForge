@@ -172,9 +172,9 @@ jobs:
       - name: Build independent graphics runtimes
         run: |
           scripts/build-graphics-runtime-android.sh \
-            build/graphics/first/libdeskforge_graphics.so build/graphics/first/work
+            build/graphics/first/libdeskforge_graphics.so build/graphics/work
           scripts/build-graphics-runtime-android.sh \
-            build/graphics/second/libdeskforge_graphics.so build/graphics/second/work
+            build/graphics/second/libdeskforge_graphics.so build/graphics/work
           cmp \
             build/graphics/first/libdeskforge_graphics.so \
             build/graphics/second/libdeskforge_graphics.so
