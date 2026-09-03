@@ -13,6 +13,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.7.0] - 2026-09-03
+
+### Added
+
+- Source-pinned Venus support in the isolated virglrenderer runtime, including its separately
+  executed render server and host Vulkan 1.1 extension qualification.
+- Auto, Venus, VirGL, and llvmpipe renderer policies with app-private persistence and explicit
+  failure for unavailable forced renderers.
+- Highest same-resolution seamless Android refresh-rate requests and presentation-path diagnostics.
+
+### Changed
+
+- Auto renderer selection now qualifies Venus with Mesa Zink first, then VirGL, then llvmpipe.
+- Fedora workspaces now require schema 5 and workspace integration 3, including the virtio Vulkan
+  ICD used by Venus.
+- Guest renderer readiness uses filesystem events instead of a fixed-interval polling loop.
+- Matching RFB frames use RGBX row copies instead of per-pixel channel conversion and CPU scaling.
+
+### Security
+
+- Venus retains the isolated renderer UID, authenticated private socket, bounded commands and
+  resources, process limits, and fail-closed forced-renderer behavior.
+
+### Known limitations
+
+- RFB remains the presentation path. This milestone does not claim direct GPU presentation or
+  native 60/90/120 fps; those require a separate X server/presenter implementation and physical
+  Adreno and Mali qualification.
+
 ## [0.6.0] - 2026-09-02
 
 ### Added
@@ -136,7 +165,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/4Luke4/DeskForge/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/4Luke4/DeskForge/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/4Luke4/DeskForge/compare/v0.3.0...v0.4.0

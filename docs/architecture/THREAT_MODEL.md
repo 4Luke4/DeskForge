@@ -42,8 +42,11 @@ approved documents, uses private Unix sockets, and exports no Android service or
   receives only a pre-bound Unix listener descriptor. `SO_PEERCRED` restricts peers to the DeskForge
   guest UID; client, command, address-space, descriptor, and core-dump limits bound compromise impact.
 - **GPU incompatibility:** an EGL/GLES self-test rejects SwiftShader, llvmpipe, and softpipe as host
-  acceleration. Fedora then probes Mesa VirGL before XFCE and selects llvmpipe on any failure.
-  Device/driver self-tests remain a production release gate.
+  acceleration. Venus additionally requires Vulkan 1.1 plus external-memory dma-buf, DRM-format-
+  modifier, and foreign-queue extensions. Fedora qualifies Zink/Venus and then VirGL before XFCE;
+  Auto selects llvmpipe on failure, while forced modes fail explicitly. Device/driver self-tests
+  remain a production release gate because the advertised Venus extensions are necessary but not
+  sufficient on every Android driver.
 - **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
   allocations and text, validates rectangle arithmetic and negotiated security, and terminates the
   session on malformed or unsupported protocol input.

@@ -9,7 +9,7 @@ evidence links; do not store device serial numbers or user data in the repositor
 | Area | Required scenarios | Acceptance evidence |
 | --- | --- | --- |
 | Installation | Fresh install, interrupted download, insufficient space, retry, application update | Screen recording and sanitized diagnostics |
-| Graphics | Hardware EGL self-test, VirGL `glxinfo`, llvmpipe fallback, rejected peer, isolated-service death, resize, rotation, suspend/resume | Host and guest renderer identities, fallback reason, screenshots, 30-minute trace |
+| Graphics | Venus/Zink and VirGL `glxinfo`, llvmpipe, strict overrides, rejected peer, service death, resize, rotation, suspend/resume, every 60/90/120 Hz same-resolution seamless mode | Host and guest renderer identities, presentation path, fallback reason, frame timeline, Perfetto trace, screenshots, CPU/memory/thermal summary |
 | Input | Touch, stylus where supported, hardware/software keyboard, composition, shortcuts, mouse buttons, wheel | Completed interaction checklist |
 | Clipboard | Manual transfer in both directions, denial, rich-content rejection, size limit, rotation | Sanitized state log without clipboard contents |
 | Audio | Built-in, USB, and Bluetooth playback; focus loss/recovery; microphone denial, one-time grant, grant, background continuation, notification stop, and revocation | Sanitized route and bounded underrun/overflow log, consent recording, and proof of silence after disable |
@@ -18,5 +18,7 @@ evidence links; do not store device serial numbers or user data in the repositor
 | Accessibility | TalkBack, keyboard-only navigation, large font, display scaling | Annotated screenshots and reviewer sign-off |
 
 At minimum, qualification must cover two API 34–37 ARM64 tablets from different system-on-chip
-families. Any device-specific workaround must be capability-driven and documented; model-name
-allowlists or silent renderer downgrades are not acceptable.
+families, including one Qualcomm Adreno and one ARM Mali implementation. Sustained desktop motion
+must present at least 95% of the active refresh rate, with p95 frame time no greater than 1.5 display
+periods and no stall over 100 ms. Any device-specific workaround must be capability-driven and
+documented; model-name allowlists or silent renderer downgrades are not acceptable.
