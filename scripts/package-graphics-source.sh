@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-manifest="${repository_root}/config/graphics/virgl.json"
+manifest="${repository_root}/config/graphics/runtime.json"
 output="${1:?output archive is required}"
 working_directory="${RUNNER_TEMP:-/tmp}/deskforge-graphics-source"
 
@@ -26,7 +26,7 @@ download() {
 download '.renderer' "virglrenderer-$(jq -r '.renderer.version' "${manifest}").tar.gz"
 download '.buildDependencies.libepoxy' \
   "libepoxy-$(jq -r '.buildDependencies.libepoxy.version' "${manifest}").tar.gz"
-cp -- "${manifest}" "${working_directory}/source/virgl.json"
+cp -- "${manifest}" "${working_directory}/source/runtime.json"
 cp -- "${repository_root}/config/graphics/deskforge_graphics_jni.c" \
   "${working_directory}/source/deskforge_graphics_jni.c"
 while IFS= read -r patch_path; do

@@ -37,7 +37,7 @@ val fedoraWorkspaceIntegrationVersion =
     (fedoraManifest["workspaceIntegrationVersion"] as Number).toInt()
 require(fedoraWorkspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
 
-val graphicsManifest = JsonSlurper().parse(rootProject.file("config/graphics/virgl.json")) as Map<*, *>
+val graphicsManifest = JsonSlurper().parse(rootProject.file("config/graphics/runtime.json")) as Map<*, *>
 require(graphicsManifest["schemaVersion"] == 2) { "Unsupported graphics manifest schema" }
 val graphicsBinary = graphicsManifest["binary"] as Map<*, *>
 val graphicsTransport = graphicsManifest["transport"] as Map<*, *>

@@ -116,10 +116,10 @@ jobs:
             .processLimits.addressSpaceBytes == 805306368 and
             .processLimits.openFiles == 256 and .processLimits.coreBytes == 0 and
             all(.patches[]; startswith("config/graphics/patches/"))
-          ' config/graphics/virgl.json
+          ' config/graphics/runtime.json
           while IFS= read -r graphics_patch; do
             test -f "$graphics_patch"
-          done < <(jq -r '.patches[]' config/graphics/virgl.json)
+          done < <(jq -r '.patches[]' config/graphics/runtime.json)
           test -x scripts/build-graphics-runtime-android.sh
           test -x scripts/verify-graphics-runtime.sh
 

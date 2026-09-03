@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-manifest="${repository_root}/config/graphics/virgl.json"
+manifest="${repository_root}/config/graphics/runtime.json"
 toolchain_manifest="${repository_root}/config/android/toolchain.properties"
 
 if [[ $# -ne 2 ]]; then

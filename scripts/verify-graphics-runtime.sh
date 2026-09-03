@@ -3,7 +3,7 @@ set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 binary="${1:?graphics runtime path is required}"
-manifest="${repository_root}/config/graphics/virgl.json"
+manifest="${repository_root}/config/graphics/runtime.json"
 toolchain="${repository_root}/config/android/toolchain.properties"
 
 [[ -f "${binary}" && -x "${binary}" ]]
