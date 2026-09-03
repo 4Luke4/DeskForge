@@ -21,7 +21,7 @@ static _Atomic int listener_fd = -1;
 
 JNIEXPORT jstring JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(
-   JNIEnv *env, jobject instance, jboolean require_venus);
+   JNIEnv *env, jobject instance, jboolean require_venus, jboolean allow_venus);
 JNIEXPORT void JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativePrepare(
    JNIEnv *env, jobject instance, jstring render_server_path);
@@ -51,7 +51,7 @@ static bool contains_software_renderer(const char *renderer)
 
 JNIEXPORT jstring JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(
-   JNIEnv *env, jobject instance, jboolean require_venus)
+   JNIEnv *env, jobject instance, jboolean require_venus, jboolean allow_venus)
 {
    (void)instance;
    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -93,7 +93,8 @@ Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(
       VkInstance instance_handle = VK_NULL_HANDLE;
       bool venus_available = false;
       char vulkan_renderer[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE] = {0};
-      if (vkCreateInstance(&create_info, NULL, &instance_handle) == VK_SUCCESS) {
+      if (allow_venus == JNI_TRUE &&
+          vkCreateInstance(&create_info, NULL, &instance_handle) == VK_SUCCESS) {
          uint32_t device_count = 0;
          if (vkEnumeratePhysicalDevices(instance_handle, &device_count, NULL) == VK_SUCCESS &&
              device_count > 0 && device_count <= 16) {

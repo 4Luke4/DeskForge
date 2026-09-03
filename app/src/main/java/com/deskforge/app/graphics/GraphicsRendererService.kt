@@ -54,7 +54,12 @@ class GraphicsRendererService : Service() {
         val preference = message.data.getString(KEY_PREFERENCE)
             ?.let { stored -> RendererPreference.entries.firstOrNull { it.name == stored } }
             ?: RendererPreference.AUTO
-        val probe = runCatching { nativeProbe(preference == RendererPreference.VENUS) }.getOrElse {
+        val probe = runCatching {
+            nativeProbe(
+                requireVenus = preference == RendererPreference.VENUS,
+                allowVenus = preference != RendererPreference.VIRGL,
+            )
+        }.getOrElse {
             listener.close()
             reply(message, MSG_FAILED, "Renderer self-test failed")
             return
@@ -132,7 +137,7 @@ class GraphicsRendererService : Service() {
         runCatching { request.replyTo?.send(response) }
     }
 
-    private external fun nativeProbe(requireVenus: Boolean): String
+    private external fun nativeProbe(requireVenus: Boolean, allowVenus: Boolean): String
     private external fun nativePrepare(renderServerPath: String)
     private external fun nativeRun(listenerFd: Int, expectedPeerUid: Int, enableVenus: Boolean): String
     private external fun nativeStop()
