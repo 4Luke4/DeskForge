@@ -32,11 +32,19 @@
     <string name="action_import">Импортировать корневую файловую систему</string>
     <string name="renderer_accelerated">Аппаратное ускорение</string>
     <string name="renderer_software">Программный режим</string>
+    <string name="renderer_preference_title">Рендерер</string>
+    <string name="renderer_preference_summary">Автовыбор использует Venus, если ГП отвечает требованиям Vulkan, затем VirGL и программный режим. Изменения вступают в силу в следующем сеансе.</string>
+    <string name="renderer_preference_auto">Автоматически (рекомендуется)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (программный)</string>
+    <string name="renderer_forced_warning">Если этот рендерер недоступен, сеанс завершится с ошибкой.</string>
     <string name="microphone_label">Микрофон гостевой системы</string>
     <string name="microphone_summary">По умолчанию выключен. Android запросит разрешение перед записью звука.</string>
     <string name="diagnostics_title">Диагностика среды выполнения</string>
     <string name="diagnostics_empty">Запустите проверку готовности PRoot, графики, звука и устройств ввода.</string>
     <string name="diagnostic_guest_graphics">OpenGL гостевой системы</string>
+    <string name="diagnostic_presentation">Путь вывода</string>
     <string name="action_check">Запустить проверку</string>
     <string name="runtime_unavailable">Проверенная среда PRoot не установлена в этой сборке.</string>
     <string name="desktop_preview">Поверхность рабочего стола Linux</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Не удалось корректно остановить рабочий стол Fedora.</string>
     <string name="error_display_disconnected">Соединение с рабочим столом Fedora неожиданно прервано.</string>
     <string name="error_graphics_runtime_lost">Служба ускоренной графики неожиданно завершила работу. Перезапустите сеанс для программного рендеринга.</string>
+    <string name="error_renderer_unavailable">Выбранный рендерер недоступен на этом устройстве. Выберите автоматический режим или другой рендерер.</string>
 </resources>

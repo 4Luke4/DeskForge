@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 4,
-  "workspaceIntegrationVersion": 2,
+  "schemaVersion": 5,
+  "workspaceIntegrationVersion": 3,
   "id": "fedora-xfce-44",
   "displayName": "Fedora XFCE 44",
   "release": "44",
@@ -67,7 +67,9 @@
     "probeTimeoutExecutable": "/usr/bin/timeout",
     "requiredMesaFiles": [
       "/usr/lib64/dri/virtio_gpu_dri.so",
-      "/usr/lib64/dri/swrast_dri.so"
+      "/usr/lib64/dri/swrast_dri.so",
+      "/usr/lib64/libvulkan_virtio.so",
+      "/usr/share/vulkan/icd.d/virtio_icd.aarch64.json"
     ],
     "packages": [
       {

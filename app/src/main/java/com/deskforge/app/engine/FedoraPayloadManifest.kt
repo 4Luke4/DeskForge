@@ -30,7 +30,7 @@ internal data class FedoraPayloadManifest(
         fun parse(json: String): FedoraPayloadManifest {
             require(json.length <= MAX_MANIFEST_CHARACTERS) { "Fedora payload manifest is too large" }
             val root = JSONObject(json)
-            require(root.getInt("schemaVersion") == 4) { "Unsupported Fedora payload manifest" }
+            require(root.getInt("schemaVersion") == 5) { "Unsupported Fedora payload manifest" }
             val workspaceIntegrationVersion = root.getInt("workspaceIntegrationVersion")
             require(workspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
             val audioPackagesJson = root.getJSONArray("audioHostPackages")

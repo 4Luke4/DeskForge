@@ -8,7 +8,11 @@ import org.junit.Test
 class RuntimeModelsTest {
     @Test
     fun `running state retains supervised pid and renderer decision`() {
-        val renderer = RendererMode.Accelerated(GraphicsBackend.VIRGL, "Adreno")
+        val renderer = RendererMode.Accelerated(
+            GraphicsBackend.VIRGL,
+            "Adreno",
+            PresentationPath.RFB,
+        )
         val state = SessionState.Running(processId = 42, rendererMode = renderer)
 
         assertEquals(42, state.processId)
@@ -29,16 +33,27 @@ class RuntimeModelsTest {
 
     @Test
     fun `desktop viewport retains bounded tablet geometry`() {
-        val viewport = DesktopViewport(widthPx = 2560, heightPx = 1600, densityDpi = 320)
+        val viewport = DesktopViewport(
+            widthPx = 2560,
+            heightPx = 1600,
+            densityDpi = 320,
+            refreshRateHz = 120f,
+        )
 
         assertEquals(2560, viewport.widthPx)
         assertEquals(1600, viewport.heightPx)
         assertEquals(320, viewport.densityDpi)
+        assertEquals(120f, viewport.refreshRateHz)
     }
 
     @Test(expected = IllegalArgumentException::class)
     fun `desktop viewport rejects an oversized framebuffer`() {
         DesktopViewport(widthPx = 4097, heightPx = 4096, densityDpi = 320)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `desktop viewport rejects an unbounded refresh rate`() {
+        DesktopViewport(widthPx = 2560, heightPx = 1600, densityDpi = 320, refreshRateHz = 241f)
     }
 
     @Test

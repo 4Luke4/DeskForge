@@ -32,11 +32,19 @@
     <string name="action_import">Kök dosya sistemi içe aktar</string>
     <string name="renderer_accelerated">Hızlandırılmış işleyici</string>
     <string name="renderer_software">Yazılım yedeği</string>
+    <string name="renderer_preference_title">İşleyici</string>
+    <string name="renderer_preference_summary">Otomatik, GPU Vulkan gereksinimlerini karşılarsa Venus’u, ardından VirGL’yi ve son olarak yazılımı seçer. Değişiklikler sonraki oturumda uygulanır.</string>
+    <string name="renderer_preference_auto">Otomatik (önerilen)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (yazılım)</string>
+    <string name="renderer_forced_warning">Bu işleyici kullanılamıyorsa oturum başarısız olur.</string>
     <string name="microphone_label">Konuk mikrofonu</string>
     <string name="microphone_summary">Varsayılan olarak kapalıdır. Ses yakalanmadan önce Android izin ister.</string>
     <string name="diagnostics_title">Çalışma zamanı tanılaması</string>
     <string name="diagnostics_empty">PRoot, grafik, ses ve giriş aygıtlarının hazır olup olmadığını denetleyin.</string>
     <string name="diagnostic_guest_graphics">Konuk OpenGL</string>
+    <string name="diagnostic_presentation">Sunum yolu</string>
     <string name="action_check">Yetenek denetimini çalıştır</string>
     <string name="runtime_unavailable">Doğrulanmış PRoot çalışma zamanı bu derlemede kurulu değil.</string>
     <string name="desktop_preview">Linux masaüstü yüzeyi</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Fedora masaüstü düzgün şekilde durdurulamadı.</string>
     <string name="error_display_disconnected">Fedora masaüstü bağlantısı beklenmedik şekilde sonlandı.</string>
     <string name="error_graphics_runtime_lost">Hızlandırılmış grafik hizmeti beklenmedik şekilde sonlandı. Yazılım işlemeyi kullanmak için oturumu yeniden başlatın.</string>
+    <string name="error_renderer_unavailable">Seçilen işleyici bu cihazda kullanılamıyor. Otomatik veya başka bir işleyici seçin.</string>
 </resources>

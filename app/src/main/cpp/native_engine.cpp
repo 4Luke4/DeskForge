@@ -13,6 +13,7 @@
 #include <cerrno>
 #include <array>
 #include <cstring>
+#include <cmath>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -136,11 +137,14 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     jobject surface,
     jint viewport_width,
     jint viewport_height,
-    jint density_dpi) {
+    jint density_dpi,
+    jfloat refresh_rate_hz,
+    jstring renderer_preference_value) {
     const std::string proot_path = from_jstring(environment, proot_path_value);
     const std::string proot_loader_path = from_jstring(environment, proot_loader_path_value);
     const std::string rootfs_path = from_jstring(environment, rootfs_path_value);
     const std::string runtime_directory_path = from_jstring(environment, runtime_directory_path_value);
+    const std::string renderer_preference = from_jstring(environment, renderer_preference_value);
     std::lock_guard<std::mutex> lock(g_session_mutex);
 
     if (active_session_pid() > 0) {
@@ -170,7 +174,10 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
     }
     if (surface == nullptr || viewport_width < 640 || viewport_width > 4096 ||
         viewport_height < 480 || viewport_height > 4096 || density_dpi < 120 || density_dpi > 640 ||
-        static_cast<int64_t>(viewport_width) * viewport_height > 16'777'216) {
+        static_cast<int64_t>(viewport_width) * viewport_height > 16'777'216 ||
+        !std::isfinite(refresh_rate_hz) || refresh_rate_hz < 30.0F || refresh_rate_hz > 240.0F ||
+        (renderer_preference != "auto" && renderer_preference != "venus" &&
+         renderer_preference != "virgl" && renderer_preference != "llvmpipe")) {
         set_error("The desktop viewport is invalid");
         return -1;
     }
@@ -207,9 +214,12 @@ Java_com_deskforge_app_engine_NativeDeskForgeEngine_nativeStart(
         setenv("LANG", "C.UTF-8", 1);
         setenv("DISPLAY", ":0", 1);
         setenv("XDG_RUNTIME_DIR", "/run/deskforge", 1);
+        const std::string refresh_rate = std::to_string(refresh_rate_hz);
         // Keep executable code in the signed native-lib directory; code cache is scratch only.
         if (setenv("PROOT_LOADER", proot_loader_path.c_str(), 1) != 0 ||
-            setenv("PROOT_TMP_DIR", runtime_directory_path.c_str(), 1) != 0) {
+            setenv("PROOT_TMP_DIR", runtime_directory_path.c_str(), 1) != 0 ||
+            setenv("DESKFORGE_RENDERER", renderer_preference.c_str(), 1) != 0 ||
+            setenv("DESKFORGE_REFRESH_RATE", refresh_rate.c_str(), 1) != 0) {
             const int launch_error = errno;
             const ssize_t written = write(exec_status_pipe[1], &launch_error, sizeof(launch_error));
             (void)written;

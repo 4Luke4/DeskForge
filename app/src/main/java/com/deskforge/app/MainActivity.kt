@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.deskforge.app.engine.NativeDeskForgeEngine
+import com.deskforge.app.graphics.RendererPreferenceStore
 import com.deskforge.app.model.DesktopViewport
 import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.ClipboardFailure
@@ -27,6 +28,7 @@ import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
+import com.deskforge.app.model.RendererPreference
 import com.deskforge.app.ui.DesktopSurfaceCallbacks
 import com.deskforge.app.ui.DesktopSurface
 import com.deskforge.app.ui.DeskForgeApp
@@ -40,6 +42,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     private val workspaceViewModel: WorkspaceViewModel by viewModels()
     private lateinit var diagnosticsEngine: NativeDeskForgeEngine
+    private lateinit var rendererPreferenceStore: RendererPreferenceStore
     private var sessionState: SessionState = SessionState.Idle
         set(value) {
             field = value
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private val audioRenderState = androidx.compose.runtime.mutableStateOf(SessionAudioState())
     private val rootfsState = androidx.compose.runtime.mutableStateOf<String?>(null)
     private val updateRequiredState = androidx.compose.runtime.mutableStateOf(false)
+    private val rendererPreferenceState = androidx.compose.runtime.mutableStateOf(RendererPreference.AUTO)
     private var sessionService: DeskForgeSessionService? = null
     private var serviceBound = false
     private var stateCollection: Job? = null
@@ -125,6 +129,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         diagnosticsEngine = NativeDeskForgeEngine(this)
+        rendererPreferenceStore = RendererPreferenceStore(this)
+        rendererPreferenceState.value = rendererPreferenceStore.get()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 workspaceViewModel.state.collectLatest(::applyWorkspaceState)
@@ -140,6 +146,9 @@ class MainActivity : ComponentActivity() {
                     audioState = audioRenderState.value,
                     isInstalled = rootfsState.value != null,
                     requiresUpdate = updateRequiredState.value,
+                    rendererPreference = rendererPreferenceState.value,
+                    rendererPreferenceEnabled = sessionState is SessionState.Idle ||
+                        sessionState is SessionState.Failed,
                     desktopCallbacks = DesktopSurfaceCallbacks(
                         onSurfaceReady = ::onSurfaceReady,
                         onSurfaceViewReady = { currentDesktopSurface = it },
@@ -157,6 +166,7 @@ class MainActivity : ComponentActivity() {
                     onPasteToDesktop = ::pasteToDesktop,
                     onCopyFromDesktop = { sessionService?.requestDesktopClipboard() },
                     onMicrophoneToggle = ::onMicrophoneToggle,
+                    onRendererPreferenceChange = ::setRendererPreference,
                 )
             }
         }
@@ -198,8 +208,19 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(this, DeskForgeSessionService::class.java)
             .setAction(DeskForgeSessionService.ACTION_PREPARE)
             .putExtra(DeskForgeSessionService.EXTRA_ROOTFS, rootfs)
+            .putExtra(
+                DeskForgeSessionService.EXTRA_RENDERER_PREFERENCE,
+                rendererPreferenceState.value.name,
+            )
         ContextCompat.startForegroundService(this, intent)
         attachCurrentSurface()
+    }
+
+    private fun setRendererPreference(preference: RendererPreference) {
+        if (sessionState !is SessionState.Idle && sessionState !is SessionState.Failed) return
+        rendererPreferenceStore.set(preference)
+        rendererPreferenceState.value = preference
+        capabilityState.value = null
     }
 
     private fun stopSession() {

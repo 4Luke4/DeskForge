@@ -32,16 +32,19 @@ require(prootRuntime["fileName"] == "libproot.so") { "Unexpected PRoot runtime f
 require(prootLoader["fileName"] == "libproot-loader.so") { "Unexpected PRoot loader file name" }
 
 val fedoraManifest = JsonSlurper().parse(rootProject.file("config/distros/fedora-xfce-44.json")) as Map<*, *>
-require(fedoraManifest["schemaVersion"] == 4) { "Unsupported Fedora distribution manifest schema" }
+require(fedoraManifest["schemaVersion"] == 5) { "Unsupported Fedora distribution manifest schema" }
 val fedoraWorkspaceIntegrationVersion =
     (fedoraManifest["workspaceIntegrationVersion"] as Number).toInt()
 require(fedoraWorkspaceIntegrationVersion > 0) { "Invalid Fedora workspace integration version" }
 
 val graphicsManifest = JsonSlurper().parse(rootProject.file("config/graphics/virgl.json")) as Map<*, *>
-require(graphicsManifest["schemaVersion"] == 1) { "Unsupported graphics manifest schema" }
+require(graphicsManifest["schemaVersion"] == 2) { "Unsupported graphics manifest schema" }
 val graphicsBinary = graphicsManifest["binary"] as Map<*, *>
 val graphicsTransport = graphicsManifest["transport"] as Map<*, *>
 require(graphicsBinary["fileName"] == "libdeskforge_graphics.so") { "Unexpected graphics runtime file name" }
+require(graphicsBinary["renderServerFileName"] == "libdeskforge_venus_server.so") {
+    "Unexpected Venus render-server file name"
+}
 val graphicsSocketName = graphicsTransport["socketName"] as String
 require(graphicsSocketName.matches(Regex("[a-z0-9._-]+"))) { "Invalid graphics socket name" }
 val graphicsStartupTimeoutMs = (graphicsTransport["startupTimeoutMs"] as Number).toLong()

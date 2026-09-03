@@ -7,6 +7,7 @@ import com.deskforge.app.model.ClipboardTransportSnapshot
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.SessionState
+import com.deskforge.app.model.RendererPreference
 
 /** Stable Kotlin boundary for the native runtime. */
 interface DeskForgeEngine {
@@ -14,7 +15,12 @@ interface DeskForgeEngine {
 
     fun graphicsSnapshot(): GraphicsTransportSnapshot
 
-    fun startSession(rootfsPath: String, surface: Surface, viewport: DesktopViewport): SessionState
+    fun startSession(
+        rootfsPath: String,
+        surface: Surface,
+        viewport: DesktopViewport,
+        rendererPreference: RendererPreference,
+    ): SessionState
 
     fun stopSession(): SessionState
 

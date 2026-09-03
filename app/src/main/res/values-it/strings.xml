@@ -32,11 +32,19 @@
     <string name="action_import">Importa file system radice</string>
     <string name="renderer_accelerated">Rendering accelerato</string>
     <string name="renderer_software">Rendering software di riserva</string>
+    <string name="renderer_preference_title">Renderer</string>
+    <string name="renderer_preference_summary">Auto seleziona Venus se la GPU soddisfa i requisiti Vulkan, poi VirGL e infine il rendering software. Le modifiche si applicano alla sessione successiva.</string>
+    <string name="renderer_preference_auto">Auto (consigliato)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (software)</string>
+    <string name="renderer_forced_warning">La sessione non si avvierà se questo renderer non è disponibile.</string>
     <string name="microphone_label">Microfono dell’ambiente Linux</string>
     <string name="microphone_summary">Disattivato per impostazione predefinita. Android chiede il consenso prima della registrazione audio.</string>
     <string name="diagnostics_title">Diagnostica di runtime</string>
     <string name="diagnostics_empty">Avvia un controllo per verificare PRoot, grafica, audio e dispositivi di input.</string>
     <string name="diagnostic_guest_graphics">OpenGL ospite</string>
+    <string name="diagnostic_presentation">Percorso di presentazione</string>
     <string name="action_check">Esegui controllo</string>
     <string name="runtime_unavailable">Il runtime PRoot verificato non è installato in questa build.</string>
     <string name="desktop_preview">Superficie desktop Linux</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Impossibile arrestare correttamente il desktop Fedora.</string>
     <string name="error_display_disconnected">La connessione al desktop Fedora si è interrotta in modo imprevisto.</string>
     <string name="error_graphics_runtime_lost">Il servizio grafico accelerato si è interrotto in modo imprevisto. Riavvia la sessione per usare il rendering software.</string>
+    <string name="error_renderer_unavailable">Il renderer selezionato non è disponibile su questo dispositivo. Scegli Auto o un altro renderer.</string>
 </resources>

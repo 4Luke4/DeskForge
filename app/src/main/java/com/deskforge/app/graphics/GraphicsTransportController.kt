@@ -17,6 +17,8 @@ import com.deskforge.app.model.GraphicsFallbackReason
 import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.RendererPreference
+import com.deskforge.app.model.PresentationPath
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -40,10 +42,28 @@ internal class GraphicsTransportController(
         GraphicsFallbackReason.RUNTIME_UNAVAILABLE,
         "Renderer has not been started",
     )
+    @Volatile
+    private var requestedRenderer = RendererPreference.AUTO
 
-    fun start(runtimeDirectory: File, timeoutMs: Long): RendererMode {
+    fun start(
+        runtimeDirectory: File,
+        timeoutMs: Long,
+        preference: RendererPreference,
+    ): RendererMode {
         stop()
+        requestedRenderer = preference
         hadReadyRenderer = false
+        if (preference == RendererPreference.LLVMPIPE) {
+            snapshot = GraphicsTransportSnapshot(
+                status = GraphicsTransportStatus.READY,
+                rendererMode = RendererMode.Software(
+                    reason = GraphicsFallbackReason.USER_SELECTED,
+                    detail = "Software rendering was selected",
+                ),
+                requestedRenderer = preference,
+            )
+            return snapshot.rendererMode
+        }
         val socket = File(runtimeDirectory, BuildConfig.GRAPHICS_SOCKET_NAME)
         val rawDescriptor = createListener(socket.absolutePath)
         if (rawDescriptor < 0) {
@@ -90,6 +110,7 @@ internal class GraphicsTransportController(
                             GraphicsRendererService.KEY_LISTENER,
                             duplicate,
                         )
+                        putString(GraphicsRendererService.KEY_PREFERENCE, preference.name)
                     }
                     replyTo = reply
                 }
@@ -151,6 +172,25 @@ internal class GraphicsTransportController(
         return snapshot.rendererMode
     }
 
+    fun guestSelected(mode: String, hostRenderer: String): RendererMode {
+        val backend = when (mode) {
+            "venus" -> GraphicsBackend.VENUS_ZINK
+            "virgl" -> GraphicsBackend.VIRGL
+            else -> return guestProbeFailed("Fedora renderer qualification failed")
+        }
+        val selected = RendererMode.Accelerated(
+            backend = backend,
+            hostRenderer = hostRenderer,
+            presentationPath = PresentationPath.RFB,
+        )
+        snapshot = GraphicsTransportSnapshot(
+            status = GraphicsTransportStatus.READY,
+            rendererMode = selected,
+            requestedRenderer = requestedRenderer,
+        )
+        return selected
+    }
+
     fun stop() {
         runCatching { service?.send(Message.obtain(null, GraphicsRendererService.MSG_STOP)) }
         stopServiceBinding()
@@ -162,7 +202,15 @@ internal class GraphicsTransportController(
         snapshot = when (message.what) {
             GraphicsRendererService.MSG_READY -> GraphicsTransportSnapshot(
                 status = GraphicsTransportStatus.READY,
-                rendererMode = RendererMode.Accelerated(GraphicsBackend.VIRGL, detail),
+                rendererMode = RendererMode.Accelerated(
+                    GraphicsBackend.valueOf(
+                        message.data.getString(GraphicsRendererService.KEY_BACKEND)
+                            ?: GraphicsBackend.VIRGL.name,
+                    ),
+                    detail,
+                    PresentationPath.RFB,
+                ),
+                requestedRenderer = requestedRenderer,
             ).also { hadReadyRenderer = true }
             GraphicsRendererService.MSG_FALLBACK -> fallback(
                 GraphicsTransportStatus.FALLBACK,
@@ -170,7 +218,11 @@ internal class GraphicsTransportController(
                 detail,
             )
             else -> fallback(
-                if (hadReadyRenderer) GraphicsTransportStatus.FAILED else GraphicsTransportStatus.FALLBACK,
+                if (hadReadyRenderer || requestedRenderer != RendererPreference.AUTO) {
+                    GraphicsTransportStatus.FAILED
+                } else {
+                    GraphicsTransportStatus.FALLBACK
+                },
                 GraphicsFallbackReason.SELF_TEST_FAILED,
                 detail.ifBlank { "Renderer service failed" },
             )
@@ -181,7 +233,11 @@ internal class GraphicsTransportController(
 
     private fun fail(reason: GraphicsFallbackReason, detail: String) {
         snapshot = fallback(
-            if (hadReadyRenderer) GraphicsTransportStatus.FAILED else GraphicsTransportStatus.FALLBACK,
+            if (hadReadyRenderer || requestedRenderer != RendererPreference.AUTO) {
+                GraphicsTransportStatus.FAILED
+            } else {
+                GraphicsTransportStatus.FALLBACK
+            },
             reason,
             detail,
         )
@@ -204,5 +260,6 @@ internal class GraphicsTransportController(
     ) = GraphicsTransportSnapshot(
         status = status,
         rendererMode = RendererMode.Software(reason = reason, detail = detail),
+        requestedRenderer = requestedRenderer,
     )
 }

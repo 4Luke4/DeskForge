@@ -31,6 +31,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -55,6 +56,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.R
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.RendererPreference
 import com.deskforge.app.model.AudioFailure
 import com.deskforge.app.model.AudioMicrophoneStatus
 import com.deskforge.app.model.AudioPlaybackStatus
@@ -75,6 +77,8 @@ fun DeskForgeApp(
     audioState: SessionAudioState,
     isInstalled: Boolean,
     requiresUpdate: Boolean,
+    rendererPreference: RendererPreference,
+    rendererPreferenceEnabled: Boolean,
     desktopCallbacks: DesktopSurfaceCallbacks,
     onInstall: () -> Unit,
     onCapabilityCheck: () -> Unit,
@@ -84,6 +88,7 @@ fun DeskForgeApp(
     onPasteToDesktop: () -> Unit,
     onCopyFromDesktop: () -> Unit,
     onMicrophoneToggle: (Boolean) -> Unit,
+    onRendererPreferenceChange: (RendererPreference) -> Unit,
 ) {
     if (sessionState is SessionState.Starting || sessionState is SessionState.Running || sessionState is SessionState.Stopping) {
         DesktopSessionScreen(
@@ -147,7 +152,11 @@ fun DeskForgeApp(
                         onStart = onStart,
                     )
                     Destination.DIAGNOSTICS -> DiagnosticsScreen(capabilities, onCapabilityCheck)
-                    Destination.SETTINGS -> SettingsScreen()
+                    Destination.SETTINGS -> SettingsScreen(
+                        rendererPreference,
+                        rendererPreferenceEnabled,
+                        onRendererPreferenceChange,
+                    )
                 }
             }
         }
@@ -265,6 +274,13 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
                     is RendererMode.Software -> "${renderer.backend.name}: ${renderer.detail}"
                 },
             )
+            DiagnosticRow(
+                stringResource(R.string.diagnostic_presentation),
+                when (val renderer = capabilities.rendererMode) {
+                    is RendererMode.Accelerated -> renderer.presentationPath.name
+                    is RendererMode.Software -> renderer.presentationPath.name
+                },
+            )
             Text(capabilities.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Button(onClick = onCapabilityCheck) { Text(stringResource(R.string.action_check)) }
@@ -272,12 +288,50 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
 }
 
 @Composable
-private fun SettingsScreen() {
+private fun SettingsScreen(
+    rendererPreference: RendererPreference,
+    enabled: Boolean,
+    onRendererPreferenceChange: (RendererPreference) -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Text(stringResource(R.string.navigation_settings), style = MaterialTheme.typography.headlineMedium)
+        Card(Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.renderer_preference_title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.renderer_preference_summary),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                RendererPreference.entries.forEach { preference ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RadioButton(
+                            selected = rendererPreference == preference,
+                            onClick = { onRendererPreferenceChange(preference) },
+                            enabled = enabled,
+                        )
+                        Column {
+                            Text(rendererPreferenceLabel(preference))
+                            if (preference != RendererPreference.AUTO) {
+                                Text(
+                                    stringResource(R.string.renderer_forced_warning),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Card(Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -295,6 +349,16 @@ private fun SettingsScreen() {
         }
     }
 }
+
+@Composable
+private fun rendererPreferenceLabel(preference: RendererPreference): String = stringResource(
+    when (preference) {
+        RendererPreference.AUTO -> R.string.renderer_preference_auto
+        RendererPreference.VENUS -> R.string.renderer_preference_venus
+        RendererPreference.VIRGL -> R.string.renderer_preference_virgl
+        RendererPreference.LLVMPIPE -> R.string.renderer_preference_llvmpipe
+    },
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -536,5 +600,7 @@ private fun failureLabel(reason: SessionFailure): String = stringResource(
         SessionFailure.SESSION_STOP_FAILED -> R.string.error_session_stop_failed
         SessionFailure.DISPLAY_DISCONNECTED -> R.string.error_display_disconnected
         SessionFailure.GRAPHICS_RUNTIME_LOST -> R.string.error_graphics_runtime_lost
+        SessionFailure.RENDERER_UNAVAILABLE -> R.string.error_renderer_unavailable
+        SessionFailure.DISPLAY_RUNTIME_LOST -> R.string.error_display_disconnected
     },
 )

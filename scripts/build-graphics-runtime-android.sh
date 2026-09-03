@@ -128,12 +128,18 @@ meson install -C "${work_directory}/build-epoxy"
 export PKG_CONFIG_LIBDIR="${work_directory}/prefix/lib/pkgconfig"
 meson setup "${work_directory}/build-virgl" "${virgl_source}" \
   --cross-file "${cross_file}" --prefix "${work_directory}/prefix" \
-  --default-library static -Dplatforms=egl -Dtests=false -Dvenus=false -Dvideo=false \
+  --default-library static -Dplatforms=egl -Dtests=false -Dvenus=true -Dvulkan-dload=true \
+  -Drender-server-worker=thread -Dvideo=false \
   -Ddrm-renderers=[] -Dtracing=none -Dunstable-apis=false
-meson compile --jobs 2 --verbose -C "${work_directory}/build-virgl" deskforge_graphics
+meson compile --jobs 2 --verbose -C "${work_directory}/build-virgl" \
+  deskforge_graphics virgl_render_server
 
 cp -- "${work_directory}/build-virgl/vtest/libdeskforge_graphics.so" "${output_binary}"
+render_server="$(dirname "${output_binary}")/$(jq -er '.binary.renderServerFileName' "${manifest}")"
+cp -- "${work_directory}/build-virgl/server/virgl_render_server" "${render_server}"
 "${llvm_root}/llvm-strip" --strip-unneeded "${output_binary}"
+"${llvm_root}/llvm-strip" --strip-unneeded "${render_server}"
 chmod 0755 "${output_binary}"
+chmod 0755 "${render_server}"
 sha256sum "${output_binary}" > "${output_binary}.sha256"
 stat --format='%s' "${output_binary}" > "${output_binary}.size"

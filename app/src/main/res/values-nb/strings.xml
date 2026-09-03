@@ -32,11 +32,19 @@
     <string name="action_import">Importer rotfilsystem</string>
     <string name="renderer_accelerated">Akselerert gjengivelse</string>
     <string name="renderer_software">Programvarebasert reserve</string>
+    <string name="renderer_preference_title">Gjengiver</string>
+    <string name="renderer_preference_summary">Auto velger Venus når GPU-en oppfyller Vulkan-kravene, deretter VirGL og til slutt programvare. Endringer gjelder fra neste økt.</string>
+    <string name="renderer_preference_auto">Auto (anbefalt)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (programvare)</string>
+    <string name="renderer_forced_warning">Økten mislykkes hvis denne gjengiveren ikke er tilgjengelig.</string>
     <string name="microphone_label">Gjestemikrofon</string>
     <string name="microphone_summary">Av som standard. Android spør før en Linux-økt kan ta opp lyd.</string>
     <string name="diagnostics_title">Kjøretidsdiagnostikk</string>
     <string name="diagnostics_empty">Kjør en kontroll av PRoot, grafikk, lyd og inndata.</string>
     <string name="diagnostic_guest_graphics">OpenGL i gjesten</string>
+    <string name="diagnostic_presentation">Presentasjonsbane</string>
     <string name="action_check">Kjør kapabilitetskontroll</string>
     <string name="runtime_unavailable">Den verifiserte PRoot-kjøretiden er ikke installert i denne byggversjonen.</string>
     <string name="desktop_preview">Linux-skrivebordsflate</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Fedora-skrivebordet kunne ikke stoppes på riktig måte.</string>
     <string name="error_display_disconnected">Tilkoblingen til Fedora-skrivebordet ble uventet avsluttet.</string>
     <string name="error_graphics_runtime_lost">Den akselererte grafikktjenesten ble uventet avsluttet. Start økten på nytt for å bruke programvaregjengivelse.</string>
+    <string name="error_renderer_unavailable">Den valgte gjengiveren er ikke tilgjengelig på denne enheten. Velg Auto eller en annen gjengiver.</string>
 </resources>

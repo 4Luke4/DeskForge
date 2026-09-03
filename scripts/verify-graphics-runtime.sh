@@ -7,15 +7,24 @@ manifest="${repository_root}/config/graphics/virgl.json"
 toolchain="${repository_root}/config/android/toolchain.properties"
 
 [[ -f "${binary}" && -x "${binary}" ]]
-[[ "$(jq -er '.schemaVersion' "${manifest}")" == "1" ]]
+[[ "$(jq -er '.schemaVersion' "${manifest}")" == "2" ]]
 [[ "$(jq -er '.binary.abi' "${manifest}")" == "$(sed -n 's/^abi=//p' "${toolchain}")" ]]
 [[ "$(jq -er '.binary.minimumApi' "${manifest}")" == "$(sed -n 's/^minSdk=//p' "${toolchain}")" ]]
 readelf --file-header "${binary}" | grep --extended-regexp --quiet 'Class:.*ELF64'
 readelf --file-header "${binary}" | grep --extended-regexp --quiet 'Machine:.*AArch64'
 readelf --dynamic "${binary}" | grep --fixed-strings --quiet 'Shared library: [libEGL.so]'
 readelf --dynamic "${binary}" | grep --fixed-strings --quiet 'Shared library: [libGLESv3.so]'
+readelf --dynamic "${binary}" | grep --fixed-strings --quiet 'Shared library: [libvulkan.so]'
+render_server="$(dirname "${binary}")/$(jq -er '.binary.renderServerFileName' "${manifest}")"
+[[ -f "${render_server}" && -x "${render_server}" ]]
+readelf --file-header "${render_server}" | grep --extended-regexp --quiet 'Class:.*ELF64'
+readelf --file-header "${render_server}" | grep --extended-regexp --quiet 'Machine:.*AArch64'
 if readelf --dynamic "${binary}" | grep --fixed-strings --quiet 'TEXTREL'; then
   echo "Graphics runtime contains text relocations" >&2
+  exit 1
+fi
+if readelf --program-headers "${render_server}" | grep --extended-regexp --quiet 'GNU_STACK.*RWE'; then
+  echo "Venus render server has an executable stack" >&2
   exit 1
 fi
 if readelf --program-headers "${binary}" | grep --extended-regexp --quiet 'GNU_STACK.*RWE'; then

@@ -9,7 +9,10 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.ParcelFileDescriptor
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import com.deskforge.app.model.GraphicsBackend
+import com.deskforge.app.model.RendererPreference
 
 /** Hosts the untrusted vtest protocol in an isolated UID with no application permissions. */
 class GraphicsRendererService : Service() {
@@ -48,19 +51,39 @@ class GraphicsRendererService : Service() {
             reply(message, MSG_FAILED, "Invalid renderer transport")
             return
         }
-        val probe = runCatching { nativeProbe() }.getOrElse {
+        val preference = message.data.getString(KEY_PREFERENCE)
+            ?.let { stored -> RendererPreference.entries.firstOrNull { it.name == stored } }
+            ?: RendererPreference.AUTO
+        val probe = runCatching { nativeProbe(preference == RendererPreference.VENUS) }.getOrElse {
             listener.close()
             reply(message, MSG_FAILED, "Renderer self-test failed")
             return
         }
-        if (!probe.startsWith(PROBE_HARDWARE_PREFIX)) {
+        if (!probe.startsWith(PROBE_HARDWARE_PREFIX) && !probe.startsWith(PROBE_VENUS_PREFIX)) {
             listener.close()
-            reply(message, MSG_FALLBACK, probe.substringAfter(':', "Renderer self-test failed"))
+            reply(
+                message,
+                if (preference == RendererPreference.AUTO) MSG_FALLBACK else MSG_FAILED,
+                probe.substringAfter(':', "Renderer self-test failed"),
+            )
+            return
+        }
+
+        val venusAvailable = probe.startsWith(PROBE_VENUS_PREFIX)
+        if (preference == RendererPreference.VENUS && !venusAvailable) {
+            listener.close()
+            reply(message, MSG_FAILED, probe.substringAfter(':', "Venus is unavailable"))
             return
         }
 
         stopping.set(false)
-        nativePrepare()
+        val renderServer = File(applicationInfo.nativeLibraryDir, VENUS_SERVER_FILE)
+        if (venusAvailable && !renderServer.canExecute()) {
+            listener.close()
+            reply(message, MSG_FAILED, "Venus render server is unavailable")
+            return
+        }
+        nativePrepare(renderServer.absolutePath)
         val descriptor = runCatching { listener.detachFd() }.getOrElse {
             listener.close()
             reply(message, MSG_FAILED, "Renderer listener could not be detached")
@@ -69,26 +92,49 @@ class GraphicsRendererService : Service() {
         val expectedPeerUid = message.sendingUid
         rendererThread = Thread(
             {
-                val result = runCatching { nativeRun(descriptor, expectedPeerUid) }
+                val result = runCatching {
+                    nativeRun(
+                        descriptor,
+                        expectedPeerUid,
+                        preference != RendererPreference.VIRGL && venusAvailable,
+                    )
+                }
                     .getOrDefault("Renderer protocol failed")
                 if (!stopping.get()) reply(message, MSG_FAILED, result)
                 stopSelf()
             },
             "deskforge-virgl",
         ).apply { start() }
-        reply(message, MSG_READY, probe.removePrefix(PROBE_HARDWARE_PREFIX))
+        reply(
+            message,
+            MSG_READY,
+            probe.substringAfter(':'),
+            if (venusAvailable && preference != RendererPreference.VIRGL) {
+                GraphicsBackend.VENUS_ZINK
+            } else {
+                GraphicsBackend.VIRGL
+            },
+        )
     }
 
-    private fun reply(request: Message, status: Int, detail: String) {
+    private fun reply(
+        request: Message,
+        status: Int,
+        detail: String,
+        backend: GraphicsBackend? = null,
+    ) {
         val response = Message.obtain(null, status).apply {
-            data = Bundle().apply { putString(KEY_DETAIL, detail.take(MAX_DETAIL_LENGTH)) }
+            data = Bundle().apply {
+                putString(KEY_DETAIL, detail.take(MAX_DETAIL_LENGTH))
+                backend?.let { putString(KEY_BACKEND, it.name) }
+            }
         }
         runCatching { request.replyTo?.send(response) }
     }
 
-    private external fun nativeProbe(): String
-    private external fun nativePrepare()
-    private external fun nativeRun(listenerFd: Int, expectedPeerUid: Int): String
+    private external fun nativeProbe(requireVenus: Boolean): String
+    private external fun nativePrepare(renderServerPath: String)
+    private external fun nativeRun(listenerFd: Int, expectedPeerUid: Int, enableVenus: Boolean): String
     private external fun nativeStop()
 
     companion object {
@@ -99,7 +145,11 @@ class GraphicsRendererService : Service() {
         const val MSG_FAILED = 5
         const val KEY_LISTENER = "listener"
         const val KEY_DETAIL = "detail"
+        const val KEY_BACKEND = "backend"
+        const val KEY_PREFERENCE = "preference"
         private const val PROBE_HARDWARE_PREFIX = "hardware:"
+        private const val PROBE_VENUS_PREFIX = "venus:"
+        private const val VENUS_SERVER_FILE = "libdeskforge_venus_server.so"
         private const val MAX_DETAIL_LENGTH = 256
         private const val STOP_JOIN_TIMEOUT_MS = 2_000L
     }

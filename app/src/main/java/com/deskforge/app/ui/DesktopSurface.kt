@@ -30,7 +30,7 @@ data class DesktopSurfaceCallbacks(
     val onText: (text: String) -> Unit,
 )
 
-/** Focused Android boundary that converts tablet and physical input into bounded RFB events. */
+/** Focused Android boundary for display pacing and bounded tablet or physical input events. */
 class DesktopSurface(
     context: Context,
     var callbacks: DesktopSurfaceCallbacks,
@@ -53,17 +53,20 @@ class DesktopSurface(
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
+        requestNativeRefreshRate(holder.surface)
         if (width > 0 && height > 0) callbacks.onSurfaceReady(holder.surface, viewport())
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         if (width >= MIN_WIDTH && height >= MIN_HEIGHT) {
+            requestNativeRefreshRate(holder.surface)
             callbacks.onSurfaceReady(holder.surface, viewport(width, height))
             callbacks.onSurfaceResized(viewport(width, height))
         }
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+        runCatching { holder.surface.clearFrameRate() }
         closeSoftwareKeyboard()
         releaseInput()
         callbacks.onSurfaceDestroyed()
@@ -164,7 +167,31 @@ class DesktopSurface(
         widthPx = width.coerceIn(MIN_WIDTH, MAX_DIMENSION),
         heightPx = height.coerceIn(MIN_HEIGHT, MAX_DIMENSION),
         densityDpi = resources.displayMetrics.densityDpi.coerceIn(120, 640),
+        refreshRateHz = preferredRefreshRate(),
     )
+
+    private fun requestNativeRefreshRate(surface: Surface) {
+        runCatching {
+            surface.setFrameRate(
+                preferredRefreshRate(),
+                Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                Surface.CHANGE_FRAME_RATE_ONLY_IF_SEAMLESS,
+            )
+        }
+    }
+
+    private fun preferredRefreshRate(): Float {
+        val activeDisplay = display ?: return 60f
+        val current = activeDisplay.mode
+        return activeDisplay.supportedModes
+            .asSequence()
+            .filter { mode ->
+                mode.physicalWidth == current.physicalWidth && mode.physicalHeight == current.physicalHeight
+            }
+            .maxOfOrNull { it.refreshRate }
+            ?.coerceIn(30f, 240f)
+            ?: current.refreshRate.coerceIn(30f, 240f)
+    }
 
     private fun sendWheel(x: Int, y: Int, amount: Float, vertical: Boolean) {
         if (amount == 0f) return

@@ -270,7 +270,7 @@ jq --null-input \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   --argjson parts "${parts_json}" \
   '{
-    schemaVersion: 4,
+    schemaVersion: 5,
     distroId: $distroId,
     release: $release,
     desktopHostVersion: $desktopHostVersion,
