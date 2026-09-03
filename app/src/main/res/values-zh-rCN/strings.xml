@@ -32,11 +32,19 @@
     <string name="action_import">导入根文件系统</string>
     <string name="renderer_accelerated">加速渲染</string>
     <string name="renderer_software">软件后备渲染</string>
+    <string name="renderer_preference_title">渲染器</string>
+    <string name="renderer_preference_summary">自动模式会在 GPU 满足 Vulkan 要求时选择 Venus，其次选择 VirGL，最后选择软件渲染。更改将在下次会话生效。</string>
+    <string name="renderer_preference_auto">自动（推荐）</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe（软件）</string>
+    <string name="renderer_forced_warning">如果此渲染器不可用，会话将失败。</string>
     <string name="microphone_label">来宾麦克风</string>
     <string name="microphone_summary">默认关闭。Linux 会话捕获音频前，Android 会请求权限。</string>
     <string name="diagnostics_title">运行时诊断</string>
     <string name="diagnostics_empty">运行检查以确认 PRoot、图形、音频和输入设备是否就绪。</string>
     <string name="diagnostic_guest_graphics">来宾 OpenGL</string>
+    <string name="diagnostic_presentation">呈现路径</string>
     <string name="action_check">运行能力检查</string>
     <string name="runtime_unavailable">此版本中未安装经过验证的 PRoot 运行时。</string>
     <string name="desktop_preview">Linux 桌面画面</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">无法正常停止 Fedora 桌面。</string>
     <string name="error_display_disconnected">Fedora 桌面连接意外中断。</string>
     <string name="error_graphics_runtime_lost">加速图形服务意外终止。请重新启动会话以使用软件渲染。</string>
+    <string name="error_renderer_unavailable">此设备无法使用所选渲染器。请选择自动或其他渲染器。</string>
 </resources>

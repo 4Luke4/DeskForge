@@ -2,6 +2,7 @@ package com.deskforge.app.engine
 
 import android.content.Context
 import android.os.SystemClock
+import android.os.FileObserver
 import android.view.Surface
 import com.deskforge.app.BuildConfig
 import com.deskforge.app.graphics.GraphicsTransportController
@@ -20,11 +21,14 @@ import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
+import com.deskforge.app.model.RendererPreference
 import java.io.File
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * JNI adapter. Native failures are converted into structured application state so the UI never
@@ -71,6 +75,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         rootfsPath: String,
         surface: Surface,
         viewport: DesktopViewport,
+        rendererPreference: RendererPreference,
     ): SessionState {
         if (!runtimeIsVerified()) {
             return SessionState.Failed(SessionFailure.RUNTIME_UNAVAILABLE, recoverable = false)
@@ -81,7 +86,16 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
         return try {
             val runtimeDirectory = runtimeStorage.prepare()
-            val hostRendererMode = graphics.start(runtimeDirectory, BuildConfig.GRAPHICS_STARTUP_TIMEOUT_MS)
+            val hostRendererMode = graphics.start(
+                runtimeDirectory,
+                BuildConfig.GRAPHICS_STARTUP_TIMEOUT_MS,
+                rendererPreference,
+                viewport.refreshRateHz,
+            )
+            if (graphics.snapshot().status == GraphicsTransportStatus.FAILED) {
+                runtimeStorage.cleanup()
+                return SessionState.Failed(SessionFailure.RENDERER_UNAVAILABLE, recoverable = true)
+            }
             if (hostRendererMode is RendererMode.Software) {
                 // A closed socket pathname must not make the guest spend its probe budget on a dead transport.
                 File(runtimeDirectory, "virgl.sock").delete()
@@ -95,14 +109,25 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                 viewport.widthPx,
                 viewport.heightPx,
                 viewport.densityDpi,
+                viewport.refreshRateHz,
+                rendererPreference.name.lowercase(),
             )
             if (result > 0) {
-                val rendererMode = if (hostRendererMode is RendererMode.Accelerated &&
-                    awaitGuestGraphicsMode(runtimeDirectory) != "virgl"
+                val guestMode = awaitGuestGraphicsMode(runtimeDirectory)
+                val rendererMode = when {
+                    hostRendererMode is RendererMode.Software && guestMode == "software" -> hostRendererMode
+                    hostRendererMode is RendererMode.Accelerated && guestMode in setOf("venus", "virgl") ->
+                        graphics.guestSelected(guestMode.orEmpty(), hostRendererMode.hostRenderer)
+                    else -> graphics.guestProbeFailed("Fedora renderer qualification failed")
+                }
+                if (rendererPreference != RendererPreference.AUTO &&
+                    rendererMode is RendererMode.Software &&
+                    rendererPreference != RendererPreference.LLVMPIPE
                 ) {
-                    graphics.guestProbeFailed("Fedora VirGL qualification failed; using llvmpipe")
-                } else {
-                    hostRendererMode
+                    nativeStop()
+                    graphics.stop()
+                    runtimeStorage.cleanup()
+                    return SessionState.Failed(SessionFailure.RENDERER_UNAVAILABLE, recoverable = true)
                 }
                 SessionState.Running(result, rendererMode)
             } else {
@@ -227,21 +252,36 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     private fun awaitGuestGraphicsMode(runtimeDirectory: File): String? {
         val status = File(runtimeDirectory, "graphics.ready")
         val deadline = SystemClock.uptimeMillis() + GUEST_GRAPHICS_TIMEOUT_MS
-        while (SystemClock.uptimeMillis() < deadline) {
-            val value = runCatching {
-                if (!Files.isRegularFile(status.toPath(), LinkOption.NOFOLLOW_LINKS) ||
-                    status.length() > MAX_GRAPHICS_STATUS_BYTES
-                ) {
-                    null
-                } else {
-                    status.readText().trim().takeIf { it == "virgl" || it == "software" }
-                }
-            }.getOrNull()
-            if (value != null) return value
-            SystemClock.sleep(GUEST_GRAPHICS_POLL_MS)
+        readGraphicsMode(status)?.let { return it }
+        val changed = CountDownLatch(1)
+        val observer = object : FileObserver(
+            runtimeDirectory,
+            FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO,
+        ) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path == status.name) changed.countDown()
+            }
         }
-        return null
+        observer.startWatching()
+        return try {
+            // Close the observer-registration race before waiting for the completed guest status write.
+            readGraphicsMode(status)?.let { return it }
+            val remaining = (deadline - SystemClock.uptimeMillis()).coerceAtLeast(0)
+            if (changed.await(remaining, TimeUnit.MILLISECONDS)) readGraphicsMode(status) else null
+        } finally {
+            observer.stopWatching()
+        }
     }
+
+    private fun readGraphicsMode(status: File): String? = runCatching {
+        if (!Files.isRegularFile(status.toPath(), LinkOption.NOFOLLOW_LINKS) ||
+            status.length() > MAX_GRAPHICS_STATUS_BYTES
+        ) {
+            null
+        } else {
+            status.readText().trim().takeIf { it in setOf("venus", "virgl", "software") }
+        }
+    }.getOrNull()
 
     private fun runtimeIsVerified(): Boolean {
         val executableStatus = ProotRuntimeIntegrity.verify(
@@ -267,6 +307,8 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         viewportWidth: Int,
         viewportHeight: Int,
         densityDpi: Int,
+        refreshRateHz: Float,
+        rendererPreference: String,
     ): Int
 
     private external fun nativeStop(): Boolean
@@ -307,7 +349,6 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         const val MAX_CLIPBOARD_TEXT_BYTES = 1024 * 1024
         const val MAX_GRAPHICS_STATUS_BYTES = 32L
         const val GUEST_GRAPHICS_TIMEOUT_MS = 12_000L
-        const val GUEST_GRAPHICS_POLL_MS = 50L
 
         init {
             System.loadLibrary("deskforge_engine")

@@ -1,13 +1,14 @@
 --- a/vtest/vtest_server.h
 +++ b/vtest/vtest_server.h
-@@ -25,6 +25,10 @@
+@@ -25,6 +25,11 @@
  #ifndef VTEST_SERVER_H
  #define VTEST_SERVER_H
  
  int vtest_main(int argc, char **argv);
 +void deskforge_vtest_prepare(void);
 +int deskforge_vtest_run(int listener_fd, unsigned expected_peer_uid,
-+                        unsigned maximum_clients, unsigned maximum_command_bytes);
++                        unsigned maximum_clients, unsigned maximum_command_bytes,
++                        unsigned enable_venus);
 +void deskforge_vtest_stop(void);
  
  #endif
@@ -41,7 +42,7 @@
  static int vtest_client_dispatch_commands(struct vtest_client *client);
  
  
-@@ -158,10 +164,38 @@
+@@ -158,10 +164,41 @@
     }
  }
  #endif
@@ -52,7 +53,8 @@
 +void deskforge_vtest_prepare(void) { server.stop_requested = 0; }
 +
 +int deskforge_vtest_run(int listener_fd, unsigned expected_peer_uid,
-+                        unsigned maximum_clients, unsigned maximum_command_bytes)
++                        unsigned maximum_clients, unsigned maximum_command_bytes,
++                        unsigned enable_venus)
 +{
 +   if (listener_fd < 0 || !expected_peer_uid || !maximum_clients || !maximum_command_bytes)
 +      return -EINVAL;
@@ -67,6 +69,8 @@
 +   server.ctx_flags = VIRGL_RENDERER_USE_EGL |
 +                      VIRGL_RENDERER_USE_SURFACELESS |
 +                      VIRGL_RENDERER_USE_GLES;
++   if (enable_venus)
++      server.ctx_flags |= VIRGL_RENDERER_VENUS | VIRGL_RENDERER_RENDER_SERVER;
 +   list_inithead(&server.new_clients);
 +   list_inithead(&server.active_clients);
 +   list_inithead(&server.inactive_clients);

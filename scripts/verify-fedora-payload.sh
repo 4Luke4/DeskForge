@@ -11,7 +11,7 @@ test -f "${payload_manifest}"
 jq --exit-status --slurpfile distro "${distro_manifest}" '
   $distro[0] as $config |
   . as $payload |
-  .schemaVersion == 4 and
+  .schemaVersion == 5 and
   .distroId == $config.id and
   .release == $config.release and
   .desktopHostVersion == $config.desktopHost.version and

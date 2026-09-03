@@ -13,7 +13,7 @@ class FedoraPayloadManifestTest {
         val manifest = FedoraPayloadManifest.parse(manifestJson())
 
         assertEquals("fedora-xfce-44", manifest.distroId)
-        assertEquals(2, manifest.workspaceIntegrationVersion)
+        assertEquals(3, manifest.workspaceIntegrationVersion)
         assertEquals(1, manifest.parts.size)
         assertEquals("fedora_xfce_44", manifest.parts.single().packName)
     }
@@ -42,11 +42,11 @@ class FedoraPayloadManifestTest {
     ): String =
         """
         {
-          "schemaVersion": 4,
+          "schemaVersion": 5,
           "distroId": "fedora-xfce-44",
           "release": "44",
           "desktopHostVersion": "1.16.2-4.fc44",
-          "workspaceIntegrationVersion": 2,
+          "workspaceIntegrationVersion": 3,
           "audioHostPackages": ["pipewire-1.6.2-1.fc44.aarch64"],
           "graphicsHostPackages": ["glx-utils-9.0.0-11.fc44.aarch64"],
           "archiveSha256": "${"a".repeat(64)}",

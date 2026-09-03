@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "backend": "virgl",
+  "schemaVersion": 2,
+  "backends": ["venus", "virgl"],
   "protocol": "vtest",
   "renderer": {
     "name": "virglrenderer",
@@ -19,6 +19,7 @@
   },
   "binary": {
     "fileName": "libdeskforge_graphics.so",
+    "renderServerFileName": "libdeskforge_venus_server.so",
     "abi": "arm64-v8a",
     "minimumApi": 34
   },

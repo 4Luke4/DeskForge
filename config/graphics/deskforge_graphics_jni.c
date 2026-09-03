@@ -1,5 +1,6 @@
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+#include <vulkan/vulkan.h>
 #include <jni.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
@@ -8,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -18,12 +20,14 @@
 static _Atomic int listener_fd = -1;
 
 JNIEXPORT jstring JNICALL
-Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(JNIEnv *env, jobject instance);
+Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(
+   JNIEnv *env, jobject instance, jboolean require_venus, jboolean allow_venus);
 JNIEXPORT void JNICALL
-Java_com_deskforge_app_graphics_GraphicsRendererService_nativePrepare(JNIEnv *env, jobject instance);
+Java_com_deskforge_app_graphics_GraphicsRendererService_nativePrepare(
+   JNIEnv *env, jobject instance, jstring render_server_path);
 JNIEXPORT jstring JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativeRun(
-   JNIEnv *env, jobject instance, jint descriptor, jint expected_peer_uid);
+   JNIEnv *env, jobject instance, jint descriptor, jint expected_peer_uid, jboolean enable_venus);
 JNIEXPORT void JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativeStop(JNIEnv *env, jobject instance);
 
@@ -46,7 +50,8 @@ static bool contains_software_renderer(const char *renderer)
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(JNIEnv *env, jobject instance)
+Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(
+   JNIEnv *env, jobject instance, jboolean require_venus, jboolean allow_venus)
 {
    (void)instance;
    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -75,8 +80,68 @@ Java_com_deskforge_app_graphics_GraphicsRendererService_nativeProbe(JNIEnv *env,
    const char *renderer = (const char *)glGetString(GL_RENDERER);
    if (contains_software_renderer(renderer))
       snprintf(response, sizeof(response), "software:%s", renderer ? renderer : "unknown renderer");
-   else
-      snprintf(response, sizeof(response), "hardware:%s", renderer);
+   else {
+      VkApplicationInfo application_info = {
+         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+         .pApplicationName = "DeskForge Venus probe",
+         .apiVersion = VK_API_VERSION_1_1,
+      };
+      VkInstanceCreateInfo create_info = {
+         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+         .pApplicationInfo = &application_info,
+      };
+      VkInstance instance_handle = VK_NULL_HANDLE;
+      bool venus_available = false;
+      char vulkan_renderer[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE] = {0};
+      if (allow_venus == JNI_TRUE &&
+          vkCreateInstance(&create_info, NULL, &instance_handle) == VK_SUCCESS) {
+         uint32_t device_count = 0;
+         if (vkEnumeratePhysicalDevices(instance_handle, &device_count, NULL) == VK_SUCCESS &&
+             device_count > 0 && device_count <= 16) {
+            VkPhysicalDevice devices[16];
+            if (vkEnumeratePhysicalDevices(instance_handle, &device_count, devices) == VK_SUCCESS) {
+               for (uint32_t device_index = 0; device_index < device_count && !venus_available;
+                    ++device_index) {
+                  VkPhysicalDeviceProperties properties;
+                  vkGetPhysicalDeviceProperties(devices[device_index], &properties);
+                  if (properties.apiVersion < VK_API_VERSION_1_1)
+                     continue;
+                  uint32_t extension_count = 0;
+                  if (vkEnumerateDeviceExtensionProperties(
+                         devices[device_index], NULL, &extension_count, NULL) != VK_SUCCESS ||
+                      extension_count == 0 || extension_count > 4096)
+                     continue;
+                  VkExtensionProperties *extensions =
+                     calloc(extension_count, sizeof(VkExtensionProperties));
+                  if (!extensions)
+                     continue;
+                  bool dma_buf = false, drm_modifier = false, foreign_queue = false;
+                  if (vkEnumerateDeviceExtensionProperties(
+                         devices[device_index], NULL, &extension_count, extensions) == VK_SUCCESS) {
+                     for (uint32_t index = 0; index < extension_count; ++index) {
+                        const char *name = extensions[index].extensionName;
+                        dma_buf |= !strcmp(name, VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
+                        drm_modifier |= !strcmp(name, VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
+                        foreign_queue |= !strcmp(name, VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME);
+                     }
+                  }
+                  free(extensions);
+                  if (dma_buf && drm_modifier && foreign_queue) {
+                     venus_available = true;
+                     snprintf(vulkan_renderer, sizeof(vulkan_renderer), "%s", properties.deviceName);
+                  }
+               }
+            }
+         }
+         vkDestroyInstance(instance_handle, NULL);
+      }
+      if (venus_available)
+         snprintf(response, sizeof(response), "venus:%s", vulkan_renderer);
+      else if (require_venus)
+         snprintf(response, sizeof(response), "fallback:Required Venus Vulkan extensions are unavailable");
+      else
+         snprintf(response, sizeof(response), "hardware:%s", renderer);
+   }
 
 cleanup:
    if (display != EGL_NO_DISPLAY) {
@@ -95,16 +160,23 @@ static bool set_process_limit(int resource, rlim_t value)
 }
 
 JNIEXPORT void JNICALL
-Java_com_deskforge_app_graphics_GraphicsRendererService_nativePrepare(JNIEnv *env, jobject instance)
+Java_com_deskforge_app_graphics_GraphicsRendererService_nativePrepare(
+   JNIEnv *env, jobject instance, jstring render_server_path)
 {
-   (void)env;
    (void)instance;
+   if (render_server_path) {
+      const char *path = (*env)->GetStringUTFChars(env, render_server_path, NULL);
+      if (path) {
+         setenv("RENDER_SERVER_EXEC_PATH", path, 1);
+         (*env)->ReleaseStringUTFChars(env, render_server_path, path);
+      }
+   }
    deskforge_vtest_prepare();
 }
 
 JNIEXPORT jstring JNICALL
 Java_com_deskforge_app_graphics_GraphicsRendererService_nativeRun(
-   JNIEnv *env, jobject instance, jint descriptor, jint expected_peer_uid)
+   JNIEnv *env, jobject instance, jint descriptor, jint expected_peer_uid, jboolean enable_venus)
 {
    (void)instance;
    if (descriptor < 0 || expected_peer_uid <= 0 ||
@@ -120,7 +192,7 @@ Java_com_deskforge_app_graphics_GraphicsRendererService_nativeRun(
       DESKFORGE_MAX_AGGREGATE_BYTES);
    const int result = deskforge_vtest_run(
       descriptor, (unsigned)expected_peer_uid, DESKFORGE_MAX_CLIENTS,
-      DESKFORGE_MAX_COMMAND_BYTES);
+      DESKFORGE_MAX_COMMAND_BYTES, enable_venus == JNI_TRUE);
    atomic_store(&listener_fd, -1);
    return (*env)->NewStringUTF(env, result == 0 ? "Renderer stopped" : "Renderer protocol failed");
 }

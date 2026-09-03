@@ -50,7 +50,9 @@ with or endorsed by the Fedora Project or XFCE project.
 - Project: <https://gitlab.freedesktop.org/virgl/virglrenderer>
 - Version: 1.3.0
 - License: MIT
-- Integration: statically linked into the isolated `libdeskforge_graphics.so` Android runtime
+- Integration: statically linked into the isolated `libdeskforge_graphics.so` Android runtime; its
+  Venus render-server entry point is packaged as the separately executed
+  `libdeskforge_venus_server.so` companion artifact
 - Source and patches: exact upstream archive and DeskForge transport patches are retained with release evidence
 
 ## libepoxy

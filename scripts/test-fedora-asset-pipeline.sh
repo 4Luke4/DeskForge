@@ -90,11 +90,11 @@ jq --null-input \
   --argjson archiveSizeBytes "${archive_size}" \
   --argjson uncompressedSizeBytes "${uncompressed_size}" \
   '{
-    schemaVersion: 4,
+    schemaVersion: 5,
     distroId: "fedora-xfce-44",
     release: "44",
     desktopHostVersion: "1.16.2-4.fc44",
-    workspaceIntegrationVersion: 2,
+    workspaceIntegrationVersion: 3,
     audioHostPackages: [
       "pipewire-1.6.2-1.fc44.aarch64",
       "pipewire-pulseaudio-1.6.2-1.fc44.aarch64",

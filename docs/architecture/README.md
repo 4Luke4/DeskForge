@@ -12,22 +12,31 @@
    Binder, raw audio, input, and other Android device nodes are not bound into the guest.
 6. Xvnc exposes RFB only through a mode-0600 socket bound from the unique app-private runtime directory.
 7. The main process pre-binds a second private socket and transfers only its descriptor to a
-   non-exported isolated renderer service. The service authenticates guest peers with `SO_PEERCRED`,
-   runs VirGL over surfaceless EGL/GLES, and never receives Binder, document, audio, or signing access.
-8. Fedora validates VirGL with `glxinfo` before XFCE; any unavailable or software-only host renderer
-   selects llvmpipe. Xvnc/RFB presentation is unchanged in both modes.
-9. The original native RFB client validates and renders framebuffer updates and forwards bounded input.
-10. Android IME commits are converted into bounded Unicode keysyms; clipboard text crosses the RFB
+   non-exported isolated renderer service. The service authenticates guest peers with `SO_PEERCRED`
+   and never receives document, audio, or signing access. It starts the pinned virglrenderer runtime
+   in Venus or VirGL mode according to the user policy and host capability probe.
+8. Venus qualification requires Android Vulkan 1.1 and the external-memory, DRM-format-modifier,
+   and foreign-queue-family extensions declared in `config/graphics/runtime.json`. The render-server
+   worker remains a separately executed, app-private native artifact. VirGL uses surfaceless EGL/GLES.
+9. Fedora qualifies the selected path before XFCE: Zink over Venus first in automatic mode, then
+   VirGL, then llvmpipe. Forced renderer policies fail closed instead of silently changing backend.
+   Xvnc/RFB presentation is unchanged in every renderer mode.
+10. The native RFB client validates and renders framebuffer updates and forwards bounded input. Its
+    exact-size path requests Android-native RGBX byte order and copies rows without per-pixel conversion.
+11. Android IME commits are converted into bounded Unicode keysyms; clipboard text crosses the RFB
    boundary only after the corresponding explicit Android action.
-11. Fedora PipeWire writes and reads fixed PCM through mode-0600 FIFOs in the same private runtime
+12. Fedora PipeWire writes and reads fixed PCM through mode-0600 FIFOs in the same private runtime
    mount. Native workers bridge those FIFOs to bounded AAudio callback buffers.
-12. Playback begins only after Android audio focus. Microphone samples enter the guest only after
+13. Playback begins only after Android audio focus. Microphone samples enter the guest only after
    runtime permission and per-session consent; disabling capture drains and zeroizes native state.
-13. Native lifecycle results are converted into `SessionState`; only a positive supervised PID with a
+14. Native lifecycle results are converted into `SessionState`; only a positive supervised PID with a
    negotiated display connection is represented as `Running`.
 
-This milestone accelerates guest OpenGL through VirGL. It does not enable Venus, guest Vulkan, or a
-Vulkan-backed Android RFB presenter.
+This milestone adds a qualified Venus/Zink guest-rendering path and retains VirGL and llvmpipe as
+explicit alternatives. Venus accelerates guest rendering; it does not provide Android presentation.
+The desktop pixel path still terminates in Xvnc/RFB and must not be described as direct GPU scanout.
+Native 60/90/120 Hz qualification therefore remains gated on a separate X server/presenter milestone
+and physical-device evidence.
 
 ## Ownership boundaries
 
@@ -43,8 +52,10 @@ Android's read-only native-library directory and are independently digest-checke
 provides owner-only scratch space, which the Kotlin boundary clears without following symlinks.
 Partial installations remain in uniquely named staging directories and are removed on error. Guest
 process groups are terminated together.
-Unsupported GPUs select llvmpipe with a structured diagnostic reason; they do not silently claim
-hardware acceleration. An accelerated renderer process lost during a session fails the session so
-the next launch can select software deterministically. Clipboard exchange is manual,
-plain-text-only, and bounded to 1 MiB. Audio uses fixed 48 kHz signed 16-bit PCM with bounded buffers;
-transport or route failures remain visible and do not silently claim readiness.
+Automatic mode selects llvmpipe with a structured diagnostic reason when neither accelerated path
+qualifies; forced modes fail rather than silently changing renderer. An accelerated renderer process
+lost during a session fails the session so the next launch can select software deterministically.
+The Android surface receives the highest same-resolution seamless refresh-rate hint, but this is a
+scheduling request rather than evidence that the RFB pipeline sustains that rate. Clipboard exchange
+is manual, plain-text-only, and bounded to 1 MiB. Audio uses fixed 48 kHz signed 16-bit PCM with
+bounded buffers; transport or route failures remain visible and do not silently claim readiness.

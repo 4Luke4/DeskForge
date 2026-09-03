@@ -31,6 +31,7 @@ import com.deskforge.app.model.SessionAudioState
 import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
+import com.deskforge.app.model.RendererPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,7 @@ class DeskForgeSessionService : Service() {
     private var launchInProgress = false
     private var stopRequested = false
     private var pendingRootfs: String? = null
+    private var pendingRendererPreference = RendererPreference.AUTO
     private var monitorJob: Job? = null
     val state: StateFlow<SessionState> = mutableState
     val clipboardState: StateFlow<SessionClipboardState> = mutableClipboardState
@@ -109,6 +111,11 @@ class DeskForgeSessionService : Service() {
                     synchronized(operationLock) {
                         stopRequested = false
                         pendingRootfs = rootfs
+                        pendingRendererPreference = intent.getStringExtra(EXTRA_RENDERER_PREFERENCE)
+                            ?.let { stored ->
+                                RendererPreference.entries.firstOrNull { it.name == stored }
+                            }
+                            ?: RendererPreference.AUTO
                         mutableState.value = SessionState.Starting
                     }
                     promoteToForeground()
@@ -135,7 +142,12 @@ class DeskForgeSessionService : Service() {
             selectedRootfs
         }
         serviceScope.launch {
-            val result = engine.startSession(rootfs, surface, viewport)
+            val result = engine.startSession(
+                rootfs,
+                surface,
+                viewport,
+                pendingRendererPreference,
+            )
             val shouldStop = synchronized(operationLock) {
                 launchInProgress = false
                 if (stopRequested) {
@@ -592,6 +604,7 @@ class DeskForgeSessionService : Service() {
         const val ACTION_STOP = "com.deskforge.app.action.STOP_SESSION"
         const val ACTION_DISABLE_MICROPHONE = "com.deskforge.app.action.DISABLE_MICROPHONE"
         const val EXTRA_ROOTFS = "rootfs"
+        const val EXTRA_RENDERER_PREFERENCE = "rendererPreference"
         private const val CHANNEL_ID = "desktop-session"
         private const val NOTIFICATION_ID = 3100
         private const val AUDIO_FOCUS_RETRY_MS = 1_000L

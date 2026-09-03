@@ -17,6 +17,8 @@ import com.deskforge.app.model.GraphicsFallbackReason
 import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.RendererPreference
+import com.deskforge.app.model.PresentationPath
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -40,10 +42,33 @@ internal class GraphicsTransportController(
         GraphicsFallbackReason.RUNTIME_UNAVAILABLE,
         "Renderer has not been started",
     )
+    @Volatile
+    private var requestedRenderer = RendererPreference.AUTO
+    @Volatile
+    private var requestedRefreshRateHz = 0f
 
-    fun start(runtimeDirectory: File, timeoutMs: Long): RendererMode {
+    fun start(
+        runtimeDirectory: File,
+        timeoutMs: Long,
+        preference: RendererPreference,
+        refreshRateHz: Float,
+    ): RendererMode {
         stop()
+        requestedRenderer = preference
+        requestedRefreshRateHz = refreshRateHz
         hadReadyRenderer = false
+        if (preference == RendererPreference.LLVMPIPE) {
+            snapshot = GraphicsTransportSnapshot(
+                status = GraphicsTransportStatus.READY,
+                rendererMode = RendererMode.Software(
+                    reason = GraphicsFallbackReason.USER_SELECTED,
+                    detail = "Software rendering was selected",
+                ),
+                requestedRenderer = preference,
+                refreshRateHz = refreshRateHz,
+            )
+            return snapshot.rendererMode
+        }
         val socket = File(runtimeDirectory, BuildConfig.GRAPHICS_SOCKET_NAME)
         val rawDescriptor = createListener(socket.absolutePath)
         if (rawDescriptor < 0) {
@@ -90,6 +115,7 @@ internal class GraphicsTransportController(
                             GraphicsRendererService.KEY_LISTENER,
                             duplicate,
                         )
+                        putString(GraphicsRendererService.KEY_PREFERENCE, preference.name)
                     }
                     replyTo = reply
                 }
@@ -151,6 +177,26 @@ internal class GraphicsTransportController(
         return snapshot.rendererMode
     }
 
+    fun guestSelected(mode: String, hostRenderer: String): RendererMode {
+        val backend = when (mode) {
+            "venus" -> GraphicsBackend.VENUS_ZINK
+            "virgl" -> GraphicsBackend.VIRGL
+            else -> return guestProbeFailed("Fedora renderer qualification failed")
+        }
+        val selected = RendererMode.Accelerated(
+            backend = backend,
+            hostRenderer = hostRenderer,
+            presentationPath = PresentationPath.RFB,
+        )
+        snapshot = GraphicsTransportSnapshot(
+            status = GraphicsTransportStatus.READY,
+            rendererMode = selected,
+            requestedRenderer = requestedRenderer,
+            refreshRateHz = requestedRefreshRateHz,
+        )
+        return selected
+    }
+
     fun stop() {
         runCatching { service?.send(Message.obtain(null, GraphicsRendererService.MSG_STOP)) }
         stopServiceBinding()
@@ -159,10 +205,20 @@ internal class GraphicsTransportController(
 
     private fun handleReply(message: Message) {
         val detail = message.data.getString(GraphicsRendererService.KEY_DETAIL).orEmpty()
+        val backend = message.data.getString(GraphicsRendererService.KEY_BACKEND)?.let { name ->
+            runCatching { GraphicsBackend.valueOf(name) }.getOrNull()
+        }
+        val rendererReady = message.what == GraphicsRendererService.MSG_READY && backend != null
         snapshot = when (message.what) {
-            GraphicsRendererService.MSG_READY -> GraphicsTransportSnapshot(
+            GraphicsRendererService.MSG_READY if backend != null -> GraphicsTransportSnapshot(
                 status = GraphicsTransportStatus.READY,
-                rendererMode = RendererMode.Accelerated(GraphicsBackend.VIRGL, detail),
+                rendererMode = RendererMode.Accelerated(
+                    backend,
+                    detail,
+                    PresentationPath.RFB,
+                ),
+                requestedRenderer = requestedRenderer,
+                refreshRateHz = requestedRefreshRateHz,
             ).also { hadReadyRenderer = true }
             GraphicsRendererService.MSG_FALLBACK -> fallback(
                 GraphicsTransportStatus.FALLBACK,
@@ -170,18 +226,26 @@ internal class GraphicsTransportController(
                 detail,
             )
             else -> fallback(
-                if (hadReadyRenderer) GraphicsTransportStatus.FAILED else GraphicsTransportStatus.FALLBACK,
+                if (hadReadyRenderer || requestedRenderer != RendererPreference.AUTO) {
+                    GraphicsTransportStatus.FAILED
+                } else {
+                    GraphicsTransportStatus.FALLBACK
+                },
                 GraphicsFallbackReason.SELF_TEST_FAILED,
                 detail.ifBlank { "Renderer service failed" },
             )
         }
         startupLatch?.countDown()
-        if (message.what != GraphicsRendererService.MSG_READY) stopServiceBinding()
+        if (!rendererReady) stopServiceBinding()
     }
 
     private fun fail(reason: GraphicsFallbackReason, detail: String) {
         snapshot = fallback(
-            if (hadReadyRenderer) GraphicsTransportStatus.FAILED else GraphicsTransportStatus.FALLBACK,
+            if (hadReadyRenderer || requestedRenderer != RendererPreference.AUTO) {
+                GraphicsTransportStatus.FAILED
+            } else {
+                GraphicsTransportStatus.FALLBACK
+            },
             reason,
             detail,
         )
@@ -204,5 +268,7 @@ internal class GraphicsTransportController(
     ) = GraphicsTransportSnapshot(
         status = status,
         rendererMode = RendererMode.Software(reason = reason, detail = detail),
+        requestedRenderer = requestedRenderer,
+        refreshRateHz = requestedRefreshRateHz,
     )
 }

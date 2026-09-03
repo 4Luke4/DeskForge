@@ -80,7 +80,7 @@ bool RfbClient::attach_surface(JNIEnv* environment, jobject surface, int width, 
         fail("Unable to acquire the Android desktop surface");
         return false;
     }
-    if (ANativeWindow_setBuffersGeometry(candidate, width, height, WINDOW_FORMAT_RGBA_8888) != 0) {
+    if (ANativeWindow_setBuffersGeometry(candidate, width, height, WINDOW_FORMAT_RGBX_8888) != 0) {
         ANativeWindow_release(candidate);
         fail("Unable to configure the Android desktop surface");
         return false;
@@ -180,7 +180,7 @@ bool RfbClient::negotiate() {
     const std::array<uint8_t, 20> pixel_format{
         0, 0, 0, 0, 32, 24, 0, 1,
         0, 255, 0, 255, 0, 255,
-        16, 8, 0, 0, 0, 0,
+        0, 8, 16, 0, 0, 0,
     };
     if (!write_exact(pixel_format.data(), pixel_format.size())) return false;
     std::vector<uint8_t> encodings{2, 0};
@@ -377,15 +377,13 @@ bool RfbClient::read_framebuffer_update() {
                 return false;
             }
             for (uint16_t row = 0; row < height; ++row) {
-                for (uint16_t column = 0; column < width; ++column) {
-                    const size_t source_offset = (static_cast<size_t>(row) * width + column) * kPixelBytes;
-                    const size_t destination_offset =
-                        ((static_cast<size_t>(y + row) * framebuffer_width_) + x + column) * kPixelBytes;
-                    framebuffer_[destination_offset] = source[source_offset + 2];
-                    framebuffer_[destination_offset + 1] = source[source_offset + 1];
-                    framebuffer_[destination_offset + 2] = source[source_offset];
-                    framebuffer_[destination_offset + 3] = 255;
-                }
+                const size_t source_offset = static_cast<size_t>(row) * width * kPixelBytes;
+                const size_t destination_offset =
+                    ((static_cast<size_t>(y + row) * framebuffer_width_) + x) * kPixelBytes;
+                std::memcpy(
+                    framebuffer_.data() + destination_offset,
+                    source.data() + source_offset,
+                    static_cast<size_t>(width) * kPixelBytes);
             }
         } else if (encoding == kEncodingCopyRect) {
             std::array<uint8_t, 4> source_position{};
@@ -442,6 +440,16 @@ void RfbClient::render_locked() {
     ANativeWindow_Buffer buffer{};
     if (ANativeWindow_lock(window_, &buffer, nullptr) != 0) return;
     auto* destination = static_cast<uint8_t*>(buffer.bits);
+    if (buffer.width == framebuffer_width_ && buffer.height == framebuffer_height_) {
+        for (int row = 0; row < buffer.height; ++row) {
+            std::memcpy(
+                destination + static_cast<size_t>(row) * buffer.stride * kPixelBytes,
+                framebuffer_.data() + static_cast<size_t>(row) * framebuffer_width_ * kPixelBytes,
+                static_cast<size_t>(framebuffer_width_) * kPixelBytes);
+        }
+        ANativeWindow_unlockAndPost(window_);
+        return;
+    }
     std::fill(destination, destination + static_cast<size_t>(buffer.stride) * buffer.height * kPixelBytes, 0);
     const double scale = std::min(
         static_cast<double>(buffer.width) / framebuffer_width_,

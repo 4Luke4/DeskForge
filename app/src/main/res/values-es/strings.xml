@@ -32,11 +32,19 @@
     <string name="action_import">Importar sistema de archivos raíz</string>
     <string name="renderer_accelerated">Renderizador acelerado</string>
     <string name="renderer_software">Alternativa por software</string>
+    <string name="renderer_preference_title">Renderizador</string>
+    <string name="renderer_preference_summary">Automático selecciona Venus si la GPU cumple los requisitos de Vulkan, luego VirGL y, por último, software. Los cambios se aplican en la próxima sesión.</string>
+    <string name="renderer_preference_auto">Automático (recomendado)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (software)</string>
+    <string name="renderer_forced_warning">La sesión fallará si este renderizador no está disponible.</string>
     <string name="microphone_label">Micrófono del sistema invitado</string>
     <string name="microphone_summary">Desactivado de forma predeterminada. Android solicita permiso antes de capturar audio.</string>
     <string name="diagnostics_title">Diagnóstico del entorno</string>
     <string name="diagnostics_empty">Ejecuta una comprobación de PRoot, gráficos, audio y dispositivos de entrada.</string>
     <string name="diagnostic_guest_graphics">OpenGL del invitado</string>
+    <string name="diagnostic_presentation">Ruta de presentación</string>
     <string name="action_check">Ejecutar comprobación</string>
     <string name="runtime_unavailable">El entorno PRoot verificado no está instalado en esta compilación.</string>
     <string name="desktop_preview">Superficie del escritorio Linux</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">No se pudo detener correctamente el escritorio Fedora.</string>
     <string name="error_display_disconnected">La conexión con el escritorio Fedora terminó inesperadamente.</string>
     <string name="error_graphics_runtime_lost">El servicio de gráficos acelerados terminó inesperadamente. Reinicia la sesión para usar el renderizado por software.</string>
+    <string name="error_renderer_unavailable">El renderizador seleccionado no está disponible en este dispositivo. Selecciona Automático u otro renderizador.</string>
 </resources>

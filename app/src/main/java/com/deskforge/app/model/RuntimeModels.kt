@@ -18,7 +18,12 @@ data class DistroDescriptor(
     val source: InstallSource,
 )
 
-enum class GraphicsBackend { VIRGL, LLVMPIPE }
+/** User policy applied at the next session boundary. Forced policies never silently fall back. */
+enum class RendererPreference { AUTO, VENUS, VIRGL, LLVMPIPE }
+
+enum class GraphicsBackend { VENUS_ZINK, VIRGL, LLVMPIPE }
+
+enum class PresentationPath { DIRECT_GPU, SHARED_MEMORY, RFB }
 
 enum class GraphicsFallbackReason {
     RUNTIME_UNAVAILABLE,
@@ -28,19 +33,24 @@ enum class GraphicsFallbackReason {
     STARTUP_TIMEOUT,
     TRANSPORT_LOST,
     GUEST_PROBE_FAILED,
+    REQUIRED_VULKAN_EXTENSIONS_MISSING,
+    FORCED_RENDERER_UNAVAILABLE,
+    USER_SELECTED,
 }
 
-/** The renderer selected for guest OpenGL; RFB remains the desktop presentation transport. */
+/** Renderer and presentation decisions are reported independently to avoid false acceleration claims. */
 sealed interface RendererMode {
     data class Accelerated(
         val backend: GraphicsBackend,
         val hostRenderer: String,
+        val presentationPath: PresentationPath,
     ) : RendererMode
 
     data class Software(
         val backend: GraphicsBackend = GraphicsBackend.LLVMPIPE,
         val reason: GraphicsFallbackReason,
         val detail: String,
+        val presentationPath: PresentationPath = PresentationPath.RFB,
     ) : RendererMode
 }
 
@@ -50,6 +60,8 @@ enum class GraphicsTransportStatus { UNAVAILABLE, STARTING, READY, FALLBACK, FAI
 data class GraphicsTransportSnapshot(
     val status: GraphicsTransportStatus,
     val rendererMode: RendererMode,
+    val requestedRenderer: RendererPreference = RendererPreference.AUTO,
+    val refreshRateHz: Float = 0f,
 )
 
 /** A complete, user-displayable capability snapshot. */
@@ -61,16 +73,18 @@ data class RuntimeCapabilities(
     val detail: String,
 )
 
-/** Pixel geometry supplied to both Xvnc and the Android native window. */
+/** Pixel geometry and the selected same-resolution display mode supplied to the display runtime. */
 data class DesktopViewport(
     val widthPx: Int,
     val heightPx: Int,
     val densityDpi: Int,
+    val refreshRateHz: Float = 60f,
 ) {
     init {
         require(widthPx in 640..4096 && heightPx in 480..4096)
         require(widthPx.toLong() * heightPx <= 16_777_216L)
         require(densityDpi in 120..640)
+        require(refreshRateHz.isFinite() && refreshRateHz in 30f..240f)
     }
 }
 
@@ -85,6 +99,8 @@ enum class SessionFailure {
     SESSION_STOP_FAILED,
     DISPLAY_DISCONNECTED,
     GRAPHICS_RUNTIME_LOST,
+    RENDERER_UNAVAILABLE,
+    DISPLAY_RUNTIME_LOST,
 }
 
 /** Single authoritative lifecycle for a managed Linux session. */

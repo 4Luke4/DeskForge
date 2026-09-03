@@ -11,8 +11,10 @@ for package in "$@"; do
   entries="$(unzip -Z1 "${package}")"
   if [[ "${package}" == *.apk ]]; then
     grep --fixed-strings --line-regexp --quiet 'lib/arm64-v8a/libdeskforge_graphics.so' <<<"${entries}"
+    grep --fixed-strings --line-regexp --quiet 'lib/arm64-v8a/libdeskforge_venus_server.so' <<<"${entries}"
   else
     grep --fixed-strings --line-regexp --quiet 'base/lib/arm64-v8a/libdeskforge_graphics.so' <<<"${entries}"
+    grep --fixed-strings --line-regexp --quiet 'base/lib/arm64-v8a/libdeskforge_venus_server.so' <<<"${entries}"
   fi
   if grep --extended-regexp --quiet '(^|/)lib/(armeabi|armeabi-v7a|x86|x86_64)/' <<<"${entries}"; then
     echo "Unexpected non-ARM64 native library in ${package}" >&2

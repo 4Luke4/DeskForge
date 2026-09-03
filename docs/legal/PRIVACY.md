@@ -1,6 +1,6 @@
 # Privacy Boundaries
 
-DeskForge performs graphics rendering locally. The VirGL service has no network permission, Android
+DeskForge performs graphics rendering locally. The Venus/VirGL service has no network permission, Android
 application permissions, document access, clipboard access, audio access, or signing access. It
 receives only a pre-bound private Unix socket descriptor and returns bounded renderer status text.
 

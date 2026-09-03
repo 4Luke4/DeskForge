@@ -32,11 +32,19 @@
     <string name="action_import">Importer un système de fichiers racine</string>
     <string name="renderer_accelerated">Rendu accéléré</string>
     <string name="renderer_software">Repli logiciel</string>
+    <string name="renderer_preference_title">Moteur de rendu</string>
+    <string name="renderer_preference_summary">Le mode Auto choisit Venus si le GPU satisfait aux exigences Vulkan, puis VirGL, puis le rendu logiciel. Les modifications s’appliquent à la prochaine session.</string>
+    <string name="renderer_preference_auto">Auto (recommandé)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (logiciel)</string>
+    <string name="renderer_forced_warning">La session échouera si ce moteur de rendu est indisponible.</string>
     <string name="microphone_label">Microphone invité</string>
     <string name="microphone_summary">Désactivé par défaut. Android demande l’autorisation avant toute capture audio.</string>
     <string name="diagnostics_title">Diagnostics d’exécution</string>
     <string name="diagnostics_empty">Lancez une vérification de PRoot, du graphisme, de l’audio et des périphériques d’entrée.</string>
     <string name="diagnostic_guest_graphics">OpenGL invité</string>
+    <string name="diagnostic_presentation">Chemin de présentation</string>
     <string name="action_check">Lancer la vérification</string>
     <string name="runtime_unavailable">L’environnement PRoot vérifié n’est pas installé dans cette version.</string>
     <string name="desktop_preview">Surface du bureau Linux</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Le bureau Fedora n’a pas pu s’arrêter correctement.</string>
     <string name="error_display_disconnected">La connexion au bureau Fedora s’est interrompue de manière inattendue.</string>
     <string name="error_graphics_runtime_lost">Le service graphique accéléré s’est arrêté de manière inattendue. Redémarrez la session pour utiliser le rendu logiciel.</string>
+    <string name="error_renderer_unavailable">Le moteur de rendu sélectionné n’est pas disponible sur cet appareil. Choisissez Auto ou un autre moteur.</string>
 </resources>

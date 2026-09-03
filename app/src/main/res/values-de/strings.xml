@@ -32,11 +32,19 @@
     <string name="action_import">Root-Dateisystem importieren</string>
     <string name="renderer_accelerated">Beschleunigte Darstellung</string>
     <string name="renderer_software">Software-Ausweichmodus</string>
+    <string name="renderer_preference_title">Renderer</string>
+    <string name="renderer_preference_summary">Automatisch wählt Venus, wenn die GPU die Vulkan-Anforderungen erfüllt, danach VirGL und dann Software. Änderungen gelten ab der nächsten Sitzung.</string>
+    <string name="renderer_preference_auto">Automatisch (empfohlen)</string>
+    <string name="renderer_preference_venus">Venus + Zink</string>
+    <string name="renderer_preference_virgl">VirGL</string>
+    <string name="renderer_preference_llvmpipe">llvmpipe (Software)</string>
+    <string name="renderer_forced_warning">Die Sitzung schlägt fehl, wenn dieser Renderer nicht verfügbar ist.</string>
     <string name="microphone_label">Gastmikrofon</string>
     <string name="microphone_summary">Standardmäßig aus. Android fragt vor einer Audioaufnahme nach der Berechtigung.</string>
     <string name="diagnostics_title">Laufzeitdiagnose</string>
     <string name="diagnostics_empty">Prüfen Sie PRoot, Grafik, Audio und Eingabegeräte.</string>
     <string name="diagnostic_guest_graphics">Gast-OpenGL</string>
+    <string name="diagnostic_presentation">Darstellungspfad</string>
     <string name="action_check">Funktionsprüfung starten</string>
     <string name="runtime_unavailable">Die verifizierte PRoot-Laufzeit ist in diesem Build nicht installiert.</string>
     <string name="desktop_preview">Linux-Desktopfläche</string>
@@ -75,4 +83,5 @@
     <string name="error_session_stop_failed">Der Fedora-Desktop konnte nicht ordnungsgemäß beendet werden.</string>
     <string name="error_display_disconnected">Die Verbindung zum Fedora-Desktop wurde unerwartet beendet.</string>
     <string name="error_graphics_runtime_lost">Der beschleunigte Grafikdienst wurde unerwartet beendet. Starten Sie die Sitzung neu, um Software-Rendering zu verwenden.</string>
+    <string name="error_renderer_unavailable">Der ausgewählte Renderer ist auf diesem Gerät nicht verfügbar. Wählen Sie Automatisch oder einen anderen Renderer.</string>
 </resources>
