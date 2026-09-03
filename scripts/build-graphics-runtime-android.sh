@@ -115,7 +115,7 @@ endian = 'little'
 
 [built-in options]
 c_args = ['-O2', '-fPIC', '-fstack-protector-strong', '-ffile-prefix-map=${work_directory}=.']
-c_link_args = ['-Wl,--build-id=none', '-Wl,-z,relro,-z,now', '-Wl,-z,noexecstack']
+c_link_args = ['-Wl,--build-id=none', '-Wl,-z,relro,-z,now', '-Wl,-z,noexecstack', '-llog']
 EOF
 
 export SOURCE_DATE_EPOCH=1683936000
