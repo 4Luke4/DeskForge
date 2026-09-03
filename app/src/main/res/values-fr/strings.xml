@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">La connexion au bureau Fedora s’est interrompue de manière inattendue.</string>
     <string name="error_graphics_runtime_lost">Le service graphique accéléré s’est arrêté de manière inattendue. Redémarrez la session pour utiliser le rendu logiciel.</string>
     <string name="error_renderer_unavailable">Le moteur de rendu sélectionné n’est pas disponible sur cet appareil. Choisissez Auto ou un autre moteur.</string>
+    <string name="presentation_preference_title">Présentation de l’écran</string>
+    <string name="presentation_preference_summary">Le mode natif utilise un tampon matériel si le pilote est compatible, sinon un transfert EGL portable. Les modifications s’appliquent à la session suivante.</string>
+    <string name="presentation_preference_native">EGL natif (recommandé)</string>
+    <string name="presentation_preference_rfb">RFB de compatibilité</string>
+    <string name="presentation_rfb_warning">Mode de récupération explicite ; la présentation native ne bascule jamais silencieusement vers RFB.</string>
+    <string name="presentation_path_native_hardware_buffer">Tampon matériel natif</string>
+    <string name="presentation_path_egl_upload">Transfert EGL natif</string>
+    <string name="presentation_path_rfb">RFB de compatibilité</string>
+    <string name="diagnostic_refresh_rate">Fréquence d’affichage</string>
+    <string name="diagnostic_refresh_rate_value">Cible %1$.1f Hz · active %2$.1f Hz</string>
+    <string name="diagnostic_frame_pacing">Cadencement des images</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f ips · p95 %2$.1f ms · max. %3$.1f ms · %4$d manquées</string>
+    <string name="error_display_runtime_lost">La présentation native s’est arrêtée de manière inattendue. Redémarrez la session ou choisissez RFB de compatibilité.</string>
 </resources>

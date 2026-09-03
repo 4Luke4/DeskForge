@@ -36,4 +36,12 @@ class DeskForgeAppTest {
             "Always off at session start. Enable it from the desktop toolbar; consent lasts only until that session ends.",
         ).assertIsDisplayed()
     }
+
+    @Test
+    fun settingsExposeExplicitPresentationRecoveryPolicy() {
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Display presentation").assertIsDisplayed()
+        composeRule.onNodeWithText("Native EGL (recommended)").assertIsDisplayed()
+        composeRule.onNodeWithText("Compatibility RFB").assertIsDisplayed()
+    }
 }

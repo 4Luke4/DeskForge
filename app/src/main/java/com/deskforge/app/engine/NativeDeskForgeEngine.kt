@@ -18,6 +18,10 @@ import com.deskforge.app.model.GraphicsFallbackReason
 import com.deskforge.app.model.GraphicsTransportSnapshot
 import com.deskforge.app.model.GraphicsTransportStatus
 import com.deskforge.app.model.RendererMode
+import com.deskforge.app.model.PresentationPath
+import com.deskforge.app.model.PresentationPreference
+import com.deskforge.app.model.PresentationSnapshot
+import com.deskforge.app.model.PresentationStatus
 import com.deskforge.app.model.RuntimeCapabilities
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
@@ -40,6 +44,8 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     private val prootLoader = File(applicationContext.applicationInfo.nativeLibraryDir, "libproot-loader.so")
     private val runtimeStorage = ProotRuntimeStorage(File(applicationContext.codeCacheDir, "proot"))
     private val graphics = GraphicsTransportController(applicationContext, ::nativeCreateGraphicsListener)
+    @Volatile
+    private var currentPresentationPreference = PresentationPreference.NATIVE
 
     override fun inspectCapabilities(): RuntimeCapabilities {
         val fields = nativeInspect(prootExecutable.absolutePath).split('|', limit = 3)
@@ -52,6 +58,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                     reason = GraphicsFallbackReason.RUNTIME_UNAVAILABLE,
                     detail = "Invalid native capability response",
                 ),
+                presentation = presentationSnapshot(),
                 detail = "The native engine returned malformed diagnostics.",
             )
         }
@@ -65,17 +72,42 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
             guestGraphicsAvailable = rendererSnapshot.status == GraphicsTransportStatus.READY,
             audioAvailable = audioAvailable,
             rendererMode = rendererSnapshot.rendererMode,
+            presentation = presentationSnapshot(),
             detail = if (prootAvailable) fields[2] else "Verified runtime executable is absent",
         )
     }
 
     override fun graphicsSnapshot(): GraphicsTransportSnapshot = graphics.snapshot()
 
+    override fun presentationSnapshot(): PresentationSnapshot {
+        val values = nativePresentationSnapshot()
+        val path = values.getOrNull(1)?.toInt()?.let { PresentationPath.entries.getOrNull(it) }
+            ?: PresentationPath.NATIVE_EGL_UPLOAD
+        return PresentationSnapshot(
+            preference = if (path == PresentationPath.RFB) {
+                PresentationPreference.RFB
+            } else {
+                currentPresentationPreference
+            },
+            status = values.getOrNull(0)?.toInt()?.let { PresentationStatus.entries.getOrNull(it) }
+                ?: PresentationStatus.UNAVAILABLE,
+            path = path,
+            detail = nativePresentationDetail().take(MAX_PRESENTATION_DETAIL_LENGTH),
+            targetRefreshRateHz = values.getOrNull(2)?.toFloat()?.takeIf { it.isFinite() } ?: 0f,
+            activeRefreshRateHz = values.getOrNull(3)?.toFloat()?.takeIf { it.isFinite() } ?: 0f,
+            submittedFramesPerSecond = values.getOrNull(4)?.toFloat()?.takeIf { it.isFinite() } ?: 0f,
+            missedFrameBudgetCount = values.getOrNull(5)?.toLong()?.coerceAtLeast(0) ?: 0,
+            p95FrameTimeMs = values.getOrNull(6)?.toFloat()?.takeIf { it.isFinite() } ?: 0f,
+            maximumFrameTimeMs = values.getOrNull(7)?.toFloat()?.takeIf { it.isFinite() } ?: 0f,
+        )
+    }
+
     override fun startSession(
         rootfsPath: String,
         surface: Surface,
         viewport: DesktopViewport,
         rendererPreference: RendererPreference,
+        presentationPreference: PresentationPreference,
     ): SessionState {
         if (!runtimeIsVerified()) {
             return SessionState.Failed(SessionFailure.RUNTIME_UNAVAILABLE, recoverable = false)
@@ -84,13 +116,14 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
             return SessionState.Failed(SessionFailure.SESSION_ALREADY_RUNNING, recoverable = true)
         }
 
+        currentPresentationPreference = presentationPreference
         return try {
             val runtimeDirectory = runtimeStorage.prepare()
             val hostRendererMode = graphics.start(
                 runtimeDirectory,
                 BuildConfig.GRAPHICS_STARTUP_TIMEOUT_MS,
                 rendererPreference,
-                viewport.refreshRateHz,
+                viewport.targetRefreshRateHz,
             )
             if (graphics.snapshot().status == GraphicsTransportStatus.FAILED) {
                 runtimeStorage.cleanup()
@@ -109,8 +142,10 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                 viewport.widthPx,
                 viewport.heightPx,
                 viewport.densityDpi,
-                viewport.refreshRateHz,
+                viewport.targetRefreshRateHz,
+                viewport.activeRefreshRateHz,
                 rendererPreference.name.lowercase(),
+                presentationPreference.name.lowercase(),
             )
             if (result > 0) {
                 val guestMode = awaitGuestGraphicsMode(runtimeDirectory)
@@ -129,7 +164,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                     runtimeStorage.cleanup()
                     return SessionState.Failed(SessionFailure.RENDERER_UNAVAILABLE, recoverable = true)
                 }
-                SessionState.Running(result, rendererMode)
+                SessionState.Running(result, rendererMode, presentationSnapshot().path)
             } else {
                 graphics.stop()
                 runtimeStorage.cleanup()
@@ -151,12 +186,23 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     }
 
     override fun attachSurface(surface: Surface, viewport: DesktopViewport): Boolean =
-        nativeAttachSurface(surface, viewport.widthPx, viewport.heightPx)
+        nativeAttachSurface(
+            surface,
+            viewport.widthPx,
+            viewport.heightPx,
+            viewport.targetRefreshRateHz,
+            viewport.activeRefreshRateHz,
+        )
 
     override fun detachSurface() = nativeDetachSurface()
 
     override fun resizeDisplay(viewport: DesktopViewport): Boolean =
-        nativeResizeDisplay(viewport.widthPx, viewport.heightPx)
+        nativeResizeDisplay(
+            viewport.widthPx,
+            viewport.heightPx,
+            viewport.targetRefreshRateHz,
+            viewport.activeRefreshRateHz,
+        )
 
     override fun sendPointer(x: Int, y: Int, buttons: Int): Boolean =
         nativeSendPointer(x, y, buttons)
@@ -239,7 +285,11 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
     fun activeSessionState(): SessionState.Running? {
         val processId = nativeActiveProcessId()
         return if (processId > 0 && runtimeIsVerified() && nativeDisplayConnected()) {
-            SessionState.Running(processId, inspectCapabilities().rendererMode)
+            SessionState.Running(
+                processId,
+                inspectCapabilities().rendererMode,
+                presentationSnapshot().path,
+            )
         } else {
             null
         }
@@ -307,8 +357,10 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         viewportWidth: Int,
         viewportHeight: Int,
         densityDpi: Int,
-        refreshRateHz: Float,
+        targetRefreshRateHz: Float,
+        activeRefreshRateHz: Float,
         rendererPreference: String,
+        presentationPreference: String,
     ): Int
 
     private external fun nativeStop(): Boolean
@@ -317,11 +369,22 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     private external fun nativeLastError(): String
 
-    private external fun nativeAttachSurface(surface: Surface, width: Int, height: Int): Boolean
+    private external fun nativeAttachSurface(
+        surface: Surface,
+        width: Int,
+        height: Int,
+        targetRefreshRateHz: Float,
+        activeRefreshRateHz: Float,
+    ): Boolean
 
     private external fun nativeDetachSurface()
 
-    private external fun nativeResizeDisplay(width: Int, height: Int): Boolean
+    private external fun nativeResizeDisplay(
+        width: Int,
+        height: Int,
+        targetRefreshRateHz: Float,
+        activeRefreshRateHz: Float,
+    ): Boolean
 
     private external fun nativeSendPointer(x: Int, y: Int, buttons: Int): Boolean
 
@@ -345,10 +408,15 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
 
     private external fun nativeDisplayConnected(): Boolean
 
+    private external fun nativePresentationSnapshot(): DoubleArray
+
+    private external fun nativePresentationDetail(): String
+
     private companion object {
         const val MAX_CLIPBOARD_TEXT_BYTES = 1024 * 1024
         const val MAX_GRAPHICS_STATUS_BYTES = 32L
         const val GUEST_GRAPHICS_TIMEOUT_MS = 12_000L
+        const val MAX_PRESENTATION_DETAIL_LENGTH = 256
 
         init {
             System.loadLibrary("deskforge_engine")

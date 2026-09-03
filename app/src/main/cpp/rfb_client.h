@@ -12,6 +12,8 @@
 #include <thread>
 #include <vector>
 
+#include "native_egl_presenter.h"
+
 enum class RfbClipboardStatus : int {
     Unsupported = 0,
     Idle = 1,
@@ -49,9 +51,23 @@ public:
         jobject surface,
         const std::string& socket_path,
         int viewport_width,
-        int viewport_height);
-    bool attach_surface(JNIEnv* environment, jobject surface, int width, int height);
+        int viewport_height,
+        bool native_presentation,
+        float target_refresh_rate_hz,
+        float active_refresh_rate_hz);
+    bool attach_surface(
+        JNIEnv* environment,
+        jobject surface,
+        int width,
+        int height,
+        float target_refresh_rate_hz,
+        float active_refresh_rate_hz);
     void detach_surface();
+    void update_display_mode(
+        int width,
+        int height,
+        float target_refresh_rate_hz,
+        float active_refresh_rate_hz);
     bool resize(int width, int height);
     bool send_pointer(int x, int y, int button_mask);
     bool send_key(uint32_t keysym, bool pressed);
@@ -60,6 +76,8 @@ public:
     bool offer_clipboard_text(const std::vector<uint8_t>& utf8_text);
     bool request_clipboard_text();
     std::optional<std::vector<uint8_t>> take_clipboard_text();
+    [[nodiscard]] NativePresentationSnapshot presentation_snapshot() const;
+    [[nodiscard]] std::string presentation_detail() const;
     void stop();
 
     [[nodiscard]] bool connected() const { return connected_.load(); }
@@ -106,4 +124,7 @@ private:
     bool outbound_clipboard_pending_ = false;
     std::vector<uint8_t> received_clipboard_;
     std::chrono::steady_clock::time_point clipboard_deadline_{};
+    bool native_presentation_ = false;
+    std::unique_ptr<NativeEglPresenter> native_presenter_;
+    NativePresentationSnapshot legacy_presentation_snapshot_{};
 };

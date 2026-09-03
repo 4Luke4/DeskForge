@@ -84,4 +84,17 @@
     <string name="error_display_disconnected">Соединение с рабочим столом Fedora неожиданно прервано.</string>
     <string name="error_graphics_runtime_lost">Служба ускоренной графики неожиданно завершила работу. Перезапустите сеанс для программного рендеринга.</string>
     <string name="error_renderer_unavailable">Выбранный рендерер недоступен на этом устройстве. Выберите автоматический режим или другой рендерер.</string>
+    <string name="presentation_preference_title">Вывод на экран</string>
+    <string name="presentation_preference_summary">Нативный режим использует аппаратный буфер при поддержке драйвером, иначе переносимую загрузку EGL. Изменения применяются со следующего сеанса.</string>
+    <string name="presentation_preference_native">Нативный EGL (рекомендуется)</string>
+    <string name="presentation_preference_rfb">Совместимый RFB</string>
+    <string name="presentation_rfb_warning">Явный режим восстановления; нативный вывод не переключается на RFB без уведомления.</string>
+    <string name="presentation_path_native_hardware_buffer">Нативный аппаратный буфер</string>
+    <string name="presentation_path_egl_upload">Нативная загрузка EGL</string>
+    <string name="presentation_path_rfb">Совместимый RFB</string>
+    <string name="diagnostic_refresh_rate">Частота экрана</string>
+    <string name="diagnostic_refresh_rate_value">Цель %1$.1f Гц · активно %2$.1f Гц</string>
+    <string name="diagnostic_frame_pacing">Ритм кадров</string>
+    <string name="diagnostic_frame_pacing_value">%1$.1f кадр/с · p95 %2$.1f мс · макс. %3$.1f мс · пропущено %4$d</string>
+    <string name="error_display_runtime_lost">Нативный вывод неожиданно остановлен. Перезапустите сеанс или выберите совместимый RFB.</string>
 </resources>

@@ -13,6 +13,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
 
+## [0.8.0] - 2026-09-03
+
+### Added
+
+- A native EGL presenter that imports a CPU-writable Android hardware buffer directly as an EGL
+  image when the public Android and driver capabilities qualify.
+- A portable damage-bounded EGL texture-upload path for devices that cannot import the requested
+  hardware buffer, with the active path reported independently from the guest renderer.
+- Persisted Native EGL and explicit compatibility RFB presentation policies, plus target/active
+  refresh rate, submitted frame rate, p95 frame time, maximum frame time, and missed-budget
+  diagnostics.
+
+### Changed
+
+- Surface frame-rate requests now use Android's default compatibility for interactive content and
+  select only the active mode's platform-declared seamless alternative refresh rates.
+- TigerVNC's pinned `FrameRate` limit now follows the selected 30–240 Hz display target instead of
+  retaining its 60 fps default.
+- Fedora workspaces now require integration 4 so the refresh-aware desktop bootstrap is installed
+  transactionally.
+- Renderer and presentation state are modeled independently, preventing an accelerated guest
+  renderer from implying an accelerated Android presentation path.
+
+### Security
+
+- Native presentation fails closed on EGL or Surface loss. Compatibility RFB is never selected as
+  an automatic fallback and remains an explicit between-session user choice.
+- Hardware-buffer producer and GPU consumer access is serialized before buffer reuse; damaged
+  rectangles and all framebuffer allocations remain bounded by the existing RFB limits.
+
+### Known limitations
+
+- The native presenter still consumes the app-private TigerVNC RFB stream. It removes CPU scaling
+  and can eliminate the final texture copy on qualified drivers, but is not end-to-end X11 zero-copy
+  and must not be described as direct scanout.
+- Sustained 60/90/120 fps remains a production claim only after the documented multi-vendor physical
+  device matrix passes. The portable EGL upload path is the compatibility target for GPUs that do
+  not qualify for hardware-buffer import.
+
 ## [0.7.0] - 2026-09-03
 
 ### Added
@@ -165,7 +204,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Fedora payload partitioning must be completed before the Play Asset Delivery size gate can pass.
 - Production distribution remains blocked on human translation review and physical tablet qualification.
 
-[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/4Luke4/DeskForge/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/4Luke4/DeskForge/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/4Luke4/DeskForge/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/4Luke4/DeskForge/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/4Luke4/DeskForge/compare/v0.4.0...v0.5.0

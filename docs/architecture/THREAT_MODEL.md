@@ -50,6 +50,13 @@ approved documents, uses private Unix sockets, and exports no Android service or
 - **Malformed desktop transport:** Xvnc listens only on a private Unix socket; the RFB client caps
   allocations and text, validates rectangle arithmetic and negotiated security, and terminates the
   session on malformed or unsupported protocol input.
+- **Malformed presentation buffers:** framebuffer geometry and damaged rectangles are validated
+  before allocation or copy. Hardware-buffer usage is limited to CPU write and GPU sampling through
+  public NDK APIs. The single producer/consumer buffer is not reused until GPU sampling completes;
+  an EGL, fence, or Surface failure ends the session instead of entering an unreported fallback.
+- **GPU presentation incompatibility:** allocation and EGL-image import are capability-tested rather
+  than selected by GPU model. Failure selects the visible native EGL upload path. Compatibility RFB
+  is a persisted, explicit user policy and is never an automatic fallback.
 - **Clipboard exfiltration or injection:** extended RFB clipboard exchange advertises zero unsolicited
   text capacity. Android and guest text cross the boundary only after separate visible actions, accept
   one plain UTF-8 item up to 1 MiB, and reject rich or provider-backed content. DeskForge clears its

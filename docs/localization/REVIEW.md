@@ -18,8 +18,9 @@ SHA reviewed before a production release can be approved.
 | Japanese | `values-ja` | Pending | — | — |
 | Turkish | `values-tr` | Pending | — | — |
 
-The 0.7.0 renderer-policy strings, 0.6.0 graphics-service failure string, and the 0.5.0 audio and
-microphone strings are translated but remain covered by each locale's pending human-review gate.
+The 0.8.0 presentation-policy and frame-diagnostic strings, 0.7.0 renderer-policy strings, 0.6.0
+graphics-service failure string, and the 0.5.0 audio and microphone strings are translated but
+remain covered by each locale's pending human-review gate.
 
 Review includes meaning, tone, truncation at 720dp, right glyph rendering, spoken accessibility
 labels, substitutions such as `%1$d`, and consistency with Fedora/XFCE terminology.

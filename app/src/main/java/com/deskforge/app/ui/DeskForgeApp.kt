@@ -57,6 +57,10 @@ import com.deskforge.app.BuildConfig
 import com.deskforge.app.R
 import com.deskforge.app.model.RendererMode
 import com.deskforge.app.model.RendererPreference
+import com.deskforge.app.model.PresentationPath
+import com.deskforge.app.model.PresentationPreference
+import com.deskforge.app.model.PresentationSnapshot
+import com.deskforge.app.model.PresentationStatus
 import com.deskforge.app.model.AudioFailure
 import com.deskforge.app.model.AudioMicrophoneStatus
 import com.deskforge.app.model.AudioPlaybackStatus
@@ -75,9 +79,11 @@ fun DeskForgeApp(
     capabilities: RuntimeCapabilities?,
     clipboardState: SessionClipboardState,
     audioState: SessionAudioState,
+    presentationSnapshot: PresentationSnapshot,
     isInstalled: Boolean,
     requiresUpdate: Boolean,
     rendererPreference: RendererPreference,
+    presentationPreference: PresentationPreference,
     rendererPreferenceEnabled: Boolean,
     desktopCallbacks: DesktopSurfaceCallbacks,
     onInstall: () -> Unit,
@@ -89,12 +95,14 @@ fun DeskForgeApp(
     onCopyFromDesktop: () -> Unit,
     onMicrophoneToggle: (Boolean) -> Unit,
     onRendererPreferenceChange: (RendererPreference) -> Unit,
+    onPresentationPreferenceChange: (PresentationPreference) -> Unit,
 ) {
     if (sessionState is SessionState.Starting || sessionState is SessionState.Running || sessionState is SessionState.Stopping) {
         DesktopSessionScreen(
             sessionState,
             clipboardState,
             audioState,
+            presentationSnapshot,
             onStop,
             onShowKeyboard,
             onPasteToDesktop,
@@ -154,8 +162,10 @@ fun DeskForgeApp(
                     Destination.DIAGNOSTICS -> DiagnosticsScreen(capabilities, onCapabilityCheck)
                     Destination.SETTINGS -> SettingsScreen(
                         rendererPreference,
+                        presentationPreference,
                         rendererPreferenceEnabled,
                         onRendererPreferenceChange,
+                        onPresentationPreferenceChange,
                     )
                 }
             }
@@ -276,11 +286,33 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
             )
             DiagnosticRow(
                 stringResource(R.string.diagnostic_presentation),
-                when (val renderer = capabilities.rendererMode) {
-                    is RendererMode.Accelerated -> renderer.presentationPath.name
-                    is RendererMode.Software -> renderer.presentationPath.name
+                if (capabilities.presentation.status == PresentationStatus.READY ||
+                    capabilities.presentation.status == PresentationStatus.SURFACE_DETACHED
+                ) {
+                    presentationPathLabel(capabilities.presentation.path)
+                } else {
+                    readinessLabel(false)
                 },
             )
+            DiagnosticRow(
+                stringResource(R.string.diagnostic_refresh_rate),
+                stringResource(
+                    R.string.diagnostic_refresh_rate_value,
+                    capabilities.presentation.targetRefreshRateHz,
+                    capabilities.presentation.activeRefreshRateHz,
+                ),
+            )
+            DiagnosticRow(
+                stringResource(R.string.diagnostic_frame_pacing),
+                stringResource(
+                    R.string.diagnostic_frame_pacing_value,
+                    capabilities.presentation.submittedFramesPerSecond,
+                    capabilities.presentation.p95FrameTimeMs,
+                    capabilities.presentation.maximumFrameTimeMs,
+                    capabilities.presentation.missedFrameBudgetCount,
+                ),
+            )
+            Text(capabilities.presentation.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(capabilities.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Button(onClick = onCapabilityCheck) { Text(stringResource(R.string.action_check)) }
@@ -290,14 +322,50 @@ private fun DiagnosticsScreen(capabilities: RuntimeCapabilities?, onCapabilityCh
 @Composable
 private fun SettingsScreen(
     rendererPreference: RendererPreference,
+    presentationPreference: PresentationPreference,
     enabled: Boolean,
     onRendererPreferenceChange: (RendererPreference) -> Unit,
+    onPresentationPreferenceChange: (PresentationPreference) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Text(stringResource(R.string.navigation_settings), style = MaterialTheme.typography.headlineMedium)
+        Card(Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.presentation_preference_title), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.presentation_preference_summary),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                PresentationPreference.entries.forEach { preference ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RadioButton(
+                            selected = presentationPreference == preference,
+                            onClick = { onPresentationPreferenceChange(preference) },
+                            enabled = enabled,
+                        )
+                        Column {
+                            Text(presentationPreferenceLabel(preference))
+                            if (preference == PresentationPreference.RFB) {
+                                Text(
+                                    stringResource(R.string.presentation_rfb_warning),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Card(Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -360,12 +428,30 @@ private fun rendererPreferenceLabel(preference: RendererPreference): String = st
     },
 )
 
+@Composable
+private fun presentationPreferenceLabel(preference: PresentationPreference): String = stringResource(
+    when (preference) {
+        PresentationPreference.NATIVE -> R.string.presentation_preference_native
+        PresentationPreference.RFB -> R.string.presentation_preference_rfb
+    },
+)
+
+@Composable
+private fun presentationPathLabel(path: PresentationPath): String = stringResource(
+    when (path) {
+        PresentationPath.NATIVE_HARDWARE_BUFFER -> R.string.presentation_path_native_hardware_buffer
+        PresentationPath.NATIVE_EGL_UPLOAD -> R.string.presentation_path_egl_upload
+        PresentationPath.RFB -> R.string.presentation_path_rfb
+    },
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DesktopSessionScreen(
     state: SessionState,
     clipboardState: SessionClipboardState,
     audioState: SessionAudioState,
+    presentationSnapshot: PresentationSnapshot,
     onStop: () -> Unit,
     onShowKeyboard: () -> Unit,
     onPasteToDesktop: () -> Unit,
@@ -397,6 +483,7 @@ private fun DesktopSessionScreen(
                         is RendererMode.Software -> stringResource(R.string.renderer_software)
                     },
                 )
+                Text(presentationPathLabel(presentationSnapshot.path))
             }
             OutlinedButton(onClick = onStop) { Text(stringResource(R.string.action_stop)) }
         }
@@ -457,6 +544,26 @@ private fun DesktopSessionScreen(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
+                )
+                Text(
+                    stringResource(
+                        R.string.diagnostic_refresh_rate_value,
+                        presentationSnapshot.targetRefreshRateHz,
+                        presentationSnapshot.activeRefreshRateHz,
+                    ),
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(
+                        R.string.diagnostic_frame_pacing_value,
+                        presentationSnapshot.submittedFramesPerSecond,
+                        presentationSnapshot.p95FrameTimeMs,
+                        presentationSnapshot.maximumFrameTimeMs,
+                        presentationSnapshot.missedFrameBudgetCount,
+                    ),
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -601,6 +708,6 @@ private fun failureLabel(reason: SessionFailure): String = stringResource(
         SessionFailure.DISPLAY_DISCONNECTED -> R.string.error_display_disconnected
         SessionFailure.GRAPHICS_RUNTIME_LOST -> R.string.error_graphics_runtime_lost
         SessionFailure.RENDERER_UNAVAILABLE -> R.string.error_renderer_unavailable
-        SessionFailure.DISPLAY_RUNTIME_LOST -> R.string.error_display_disconnected
+        SessionFailure.DISPLAY_RUNTIME_LOST -> R.string.error_display_runtime_lost
     },
 )

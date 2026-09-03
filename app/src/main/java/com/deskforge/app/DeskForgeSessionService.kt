@@ -32,6 +32,8 @@ import com.deskforge.app.model.SessionClipboardState
 import com.deskforge.app.model.SessionFailure
 import com.deskforge.app.model.SessionState
 import com.deskforge.app.model.RendererPreference
+import com.deskforge.app.model.PresentationPreference
+import com.deskforge.app.model.PresentationSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,15 +51,18 @@ class DeskForgeSessionService : Service() {
     private val mutableState = MutableStateFlow<SessionState>(SessionState.Idle)
     private val mutableClipboardState = MutableStateFlow<SessionClipboardState>(SessionClipboardState.Unavailable)
     private val mutableAudioState = MutableStateFlow(SessionAudioState())
+    private val mutablePresentationState = MutableStateFlow(PresentationSnapshot())
     private val operationLock = Any()
     private var launchInProgress = false
     private var stopRequested = false
     private var pendingRootfs: String? = null
     private var pendingRendererPreference = RendererPreference.AUTO
+    private var pendingPresentationPreference = PresentationPreference.NATIVE
     private var monitorJob: Job? = null
     val state: StateFlow<SessionState> = mutableState
     val clipboardState: StateFlow<SessionClipboardState> = mutableClipboardState
     val audioState: StateFlow<SessionAudioState> = mutableAudioState
+    val presentationState: StateFlow<PresentationSnapshot> = mutablePresentationState
     private var receivedClipboard: ReceivedClipboard? = null
     private var clipboardGeneration = 0L
     private var localClipboardFailure: ClipboardFailure? = null
@@ -92,6 +97,7 @@ class DeskForgeSessionService : Service() {
         createNotificationChannel()
         engine.activeSessionState()?.let { running ->
             mutableState.value = running
+            mutablePresentationState.value = engine.presentationSnapshot()
             startMonitoring()
         }
     }
@@ -116,6 +122,11 @@ class DeskForgeSessionService : Service() {
                                 RendererPreference.entries.firstOrNull { it.name == stored }
                             }
                             ?: RendererPreference.AUTO
+                        pendingPresentationPreference = intent.getStringExtra(EXTRA_PRESENTATION_PREFERENCE)
+                            ?.let { stored ->
+                                PresentationPreference.entries.firstOrNull { it.name == stored }
+                            }
+                            ?: PresentationPreference.NATIVE
                         mutableState.value = SessionState.Starting
                     }
                     promoteToForeground()
@@ -147,6 +158,7 @@ class DeskForgeSessionService : Service() {
                 surface,
                 viewport,
                 pendingRendererPreference,
+                pendingPresentationPreference,
             )
             val shouldStop = synchronized(operationLock) {
                 launchInProgress = false
@@ -166,6 +178,7 @@ class DeskForgeSessionService : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             } else if (result is SessionState.Running) {
+                mutablePresentationState.value = engine.presentationSnapshot()
                 updateNotification(running = true)
                 startMonitoring()
             } else {
@@ -340,6 +353,20 @@ class DeskForgeSessionService : Service() {
                     clearAudioState()
                     mutableState.value = SessionState.Failed(
                         SessionFailure.DISPLAY_DISCONNECTED,
+                        recoverable = true,
+                    )
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    break
+                }
+                val presentation = engine.presentationSnapshot()
+                mutablePresentationState.value = presentation
+                if (presentation.status == com.deskforge.app.model.PresentationStatus.FAILED) {
+                    engine.stopSession()
+                    clearClipboardState()
+                    clearAudioState()
+                    mutableState.value = SessionState.Failed(
+                        SessionFailure.DISPLAY_RUNTIME_LOST,
                         recoverable = true,
                     )
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -605,6 +632,7 @@ class DeskForgeSessionService : Service() {
         const val ACTION_DISABLE_MICROPHONE = "com.deskforge.app.action.DISABLE_MICROPHONE"
         const val EXTRA_ROOTFS = "rootfs"
         const val EXTRA_RENDERER_PREFERENCE = "rendererPreference"
+        const val EXTRA_PRESENTATION_PREFERENCE = "presentationPreference"
         private const val CHANNEL_ID = "desktop-session"
         private const val NOTIFICATION_ID = 3100
         private const val AUDIO_FOCUS_RETRY_MS = 1_000L

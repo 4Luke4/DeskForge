@@ -5,7 +5,7 @@ DeskForge is an original Android implementation of a local Linux desktop environ
 with a C++ runtime boundary and a separately executed upstream PRoot binary.
 
 > [!IMPORTANT]
-> Version 0.7.0 adds qualified Venus/Zink with VirGL and llvmpipe fallbacks. It is not
+> Version 0.8.0 adds a hardware-buffer/EGL Android presenter with an explicit RFB recovery mode. It is not
 > approved for production distribution. Physical tablet, translation, Google Play policy, and
 > third-party licensing gates remain mandatory before release.
 
@@ -16,7 +16,8 @@ with a C++ runtime boundary and a separately executed upstream PRoot binary.
 - Devices: `arm64-v8a` and at least 720dp smallest width
 - Qualified preset: official Fedora XFCE 44 AArch64
 - Distribution: paid Google Play listing with Play Asset Delivery
-- Rendering: Auto selects qualified Venus/Zink, VirGL, then llvmpipe; RFB presentation remains
+- Rendering: Auto selects qualified Venus/Zink, VirGL, then llvmpipe; Native EGL presentation is
+  the default and compatibility RFB is an explicit recovery choice
 - Input: touch, mouse, physical keyboard, and explicitly invoked Android software keyboard
 - Clipboard: manual plain-text transfer in either direction; automatic synchronization is disabled
 - Audio: PipeWire playback and a permission-gated, per-session microphone bridge
@@ -60,9 +61,11 @@ secrets only after Play and legal release gates have been approved.
 
 DeskForge is under active initial development. The verified PRoot runtime can now launch an
 interactive Fedora XFCE framebuffer through deterministic multi-pack delivery and an app-private
-RFB transport, with isolated Venus or VirGL guest acceleration, llvmpipe fallback, local playback, and
-explicit microphone consent through private PCM FIFOs. Production remains blocked until post-merge
-runtime evidence and physical-device qualification are complete.
+RFB transport. Decoded damage is presented through a directly imported Android hardware buffer
+when the driver qualifies, or through a portable EGL upload path otherwise. Isolated Venus or VirGL
+guest acceleration, llvmpipe fallback, local playback, and explicit microphone consent remain
+available. Production remains blocked until post-merge runtime evidence and multi-vendor physical-
+device qualification are complete.
 
 ## License
 

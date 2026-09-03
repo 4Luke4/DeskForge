@@ -4,11 +4,14 @@ set -euo pipefail
 width="${1:?desktop width is required}"
 height="${2:?desktop height is required}"
 dpi="${3:?desktop density is required}"
+refresh_rate="${DESKFORGE_REFRESH_RATE:-60}"
 
 [[ "${width}" =~ ^[0-9]+$ && "${height}" =~ ^[0-9]+$ && "${dpi}" =~ ^[0-9]+$ ]]
+[[ "${refresh_rate}" =~ ^[0-9]+$ ]]
 (( width >= 640 && width <= 4096 ))
 (( height >= 480 && height <= 4096 ))
 (( dpi >= 120 && dpi <= 640 ))
+(( refresh_rate >= 30 && refresh_rate <= 240 ))
 
 runtime_directory=/run/deskforge
 rfb_socket="${runtime_directory}/rfb.sock"
@@ -33,6 +36,7 @@ trap cleanup EXIT INT TERM
     -geometry "${width}x${height}" \
     -depth 24 \
     -dpi "${dpi}" \
+    -FrameRate "${refresh_rate}" \
     -rfbport -1 \
     -rfbunixpath "${rfb_socket}" \
     -rfbunixmode 0600 \
