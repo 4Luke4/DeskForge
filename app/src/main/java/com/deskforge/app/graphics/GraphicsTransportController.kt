@@ -44,14 +44,18 @@ internal class GraphicsTransportController(
     )
     @Volatile
     private var requestedRenderer = RendererPreference.AUTO
+    @Volatile
+    private var requestedRefreshRateHz = 0f
 
     fun start(
         runtimeDirectory: File,
         timeoutMs: Long,
         preference: RendererPreference,
+        refreshRateHz: Float,
     ): RendererMode {
         stop()
         requestedRenderer = preference
+        requestedRefreshRateHz = refreshRateHz
         hadReadyRenderer = false
         if (preference == RendererPreference.LLVMPIPE) {
             snapshot = GraphicsTransportSnapshot(
@@ -61,6 +65,7 @@ internal class GraphicsTransportController(
                     detail = "Software rendering was selected",
                 ),
                 requestedRenderer = preference,
+                refreshRateHz = refreshRateHz,
             )
             return snapshot.rendererMode
         }
@@ -187,6 +192,7 @@ internal class GraphicsTransportController(
             status = GraphicsTransportStatus.READY,
             rendererMode = selected,
             requestedRenderer = requestedRenderer,
+            refreshRateHz = requestedRefreshRateHz,
         )
         return selected
     }
@@ -199,18 +205,20 @@ internal class GraphicsTransportController(
 
     private fun handleReply(message: Message) {
         val detail = message.data.getString(GraphicsRendererService.KEY_DETAIL).orEmpty()
+        val backend = message.data.getString(GraphicsRendererService.KEY_BACKEND)?.let { name ->
+            runCatching { GraphicsBackend.valueOf(name) }.getOrNull()
+        }
+        val rendererReady = message.what == GraphicsRendererService.MSG_READY && backend != null
         snapshot = when (message.what) {
-            GraphicsRendererService.MSG_READY -> GraphicsTransportSnapshot(
+            GraphicsRendererService.MSG_READY if backend != null -> GraphicsTransportSnapshot(
                 status = GraphicsTransportStatus.READY,
                 rendererMode = RendererMode.Accelerated(
-                    GraphicsBackend.valueOf(
-                        message.data.getString(GraphicsRendererService.KEY_BACKEND)
-                            ?: GraphicsBackend.VIRGL.name,
-                    ),
+                    backend,
                     detail,
                     PresentationPath.RFB,
                 ),
                 requestedRenderer = requestedRenderer,
+                refreshRateHz = requestedRefreshRateHz,
             ).also { hadReadyRenderer = true }
             GraphicsRendererService.MSG_FALLBACK -> fallback(
                 GraphicsTransportStatus.FALLBACK,
@@ -228,7 +236,7 @@ internal class GraphicsTransportController(
             )
         }
         startupLatch?.countDown()
-        if (message.what != GraphicsRendererService.MSG_READY) stopServiceBinding()
+        if (!rendererReady) stopServiceBinding()
     }
 
     private fun fail(reason: GraphicsFallbackReason, detail: String) {
@@ -261,5 +269,6 @@ internal class GraphicsTransportController(
         status = status,
         rendererMode = RendererMode.Software(reason = reason, detail = detail),
         requestedRenderer = requestedRenderer,
+        refreshRateHz = requestedRefreshRateHz,
     )
 }

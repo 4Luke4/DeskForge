@@ -29,6 +29,7 @@ class RuntimeModelsTest {
         assertTrue(renderer.detail.isNotBlank())
         assertEquals(GraphicsBackend.LLVMPIPE, renderer.backend)
         assertEquals(GraphicsFallbackReason.SELF_TEST_FAILED, renderer.reason)
+        assertEquals(PresentationPath.RFB, renderer.presentationPath)
     }
 
     @Test

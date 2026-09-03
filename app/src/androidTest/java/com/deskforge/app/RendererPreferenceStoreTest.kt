@@ -15,9 +15,11 @@ class RendererPreferenceStoreTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val store = RendererPreferenceStore(context)
 
-        store.set(RendererPreference.VENUS)
-
-        assertEquals(RendererPreference.VENUS, RendererPreferenceStore(context).get())
-        store.set(RendererPreference.AUTO)
+        try {
+            store.set(RendererPreference.VENUS)
+            assertEquals(RendererPreference.VENUS, RendererPreferenceStore(context).get())
+        } finally {
+            store.set(RendererPreference.AUTO)
+        }
     }
 }

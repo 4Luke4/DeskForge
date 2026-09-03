@@ -50,7 +50,7 @@ sealed interface RendererMode {
         val backend: GraphicsBackend = GraphicsBackend.LLVMPIPE,
         val reason: GraphicsFallbackReason,
         val detail: String,
-        val presentationPath: PresentationPath = PresentationPath.SHARED_MEMORY,
+        val presentationPath: PresentationPath = PresentationPath.RFB,
     ) : RendererMode
 }
 

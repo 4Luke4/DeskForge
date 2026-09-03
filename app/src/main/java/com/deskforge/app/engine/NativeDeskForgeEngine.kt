@@ -90,6 +90,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
                 runtimeDirectory,
                 BuildConfig.GRAPHICS_STARTUP_TIMEOUT_MS,
                 rendererPreference,
+                viewport.refreshRateHz,
             )
             if (graphics.snapshot().status == GraphicsTransportStatus.FAILED) {
                 runtimeStorage.cleanup()
@@ -255,7 +256,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         val changed = CountDownLatch(1)
         val observer = object : FileObserver(
             runtimeDirectory,
-            FileObserver.CREATE or FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO,
+            FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO,
         ) {
             override fun onEvent(event: Int, path: String?) {
                 if (path == status.name) changed.countDown()
@@ -263,7 +264,7 @@ class NativeDeskForgeEngine(context: Context) : DeskForgeEngine {
         }
         observer.startWatching()
         return try {
-            // Close the observer-registration race before waiting for the guest's atomic status write.
+            // Close the observer-registration race before waiting for the completed guest status write.
             readGraphicsMode(status)?.let { return it }
             val remaining = (deadline - SystemClock.uptimeMillis()).coerceAtLeast(0)
             if (changed.await(remaining, TimeUnit.MILLISECONDS)) readGraphicsMode(status) else null
