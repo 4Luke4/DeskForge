@@ -51,11 +51,15 @@ bool validate_buffer(const AHardwareBuffer_Desc& descriptor, bool allocated) {
     if (descriptor.width == 0 || descriptor.height == 0 || descriptor.layers != 1 ||
         !accepted_format(descriptor.format) ||
         (descriptor.usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT) != 0 ||
-        (allocated && descriptor.stride < descriptor.width)) {
+        (allocated && descriptor.stride != 0 && descriptor.stride < descriptor.width)) {
         return false;
     }
 
-    const uint64_t stride = allocated ? descriptor.stride : descriptor.width;
+    // GPU-only buffers may not expose a CPU row stride. This identity-only probe uses the validated
+    // minimum; production imports separately reserve broker-supplied bytes before ownership moves.
+    const uint64_t stride = allocated && descriptor.stride != 0
+        ? descriptor.stride
+        : descriptor.width;
     uint64_t pixels = 0;
     uint64_t bytes = 0;
     return checked_multiply(stride, descriptor.height, &pixels) &&
@@ -162,6 +166,15 @@ std::string probe_hardware_buffer_transport() {
     log_probe_stage("hardware buffer allocated");
     AHardwareBuffer_Desc allocated{};
     AHardwareBuffer_describe(buffer, &allocated);
+    __android_log_print(
+        ANDROID_LOG_INFO,
+        kLogTag,
+        "Allocated buffer: width=%u height=%u layers=%u format=%u stride=%u",
+        allocated.width,
+        allocated.height,
+        allocated.layers,
+        allocated.format,
+        allocated.stride);
     if (!validate_buffer(allocated, true)) {
         AHardwareBuffer_release(buffer);
         return "unavailable:Android returned an invalid hardware-buffer descriptor";

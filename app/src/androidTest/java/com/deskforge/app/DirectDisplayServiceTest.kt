@@ -26,14 +26,18 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class DirectDisplayServiceTest {
     @Test
-    fun appBrokerAndIsolatedServiceQualifyTheirBoundaries() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+    fun appBrokerQualifiesPublicHardwareBufferContract() {
         val bufferCapability = DirectDisplayCapabilityProbe.probe()
         assertTrue(bufferCapability, bufferCapability.startsWith("available:"))
         assertTrue(
             bufferCapability,
             bufferCapability.contains("hardware-buffer and Unix transfer contract qualified"),
         )
+    }
+
+    @Test
+    fun isolatedServiceQualifiesValidationAndResourceAccounting() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val completed = CountDownLatch(1)
         val status = AtomicInteger()
         val detail = AtomicReference("")
