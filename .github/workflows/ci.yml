@@ -403,7 +403,7 @@ jobs:
           script: |
             mkdir -p build/qa/x86-kvm
             adb logcat -c
-            ./gradlew --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime connectedDebugAndroidTest
+            ./gradlew --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime connectedDebugAndroidTest || { adb logcat -d -v threadtime > build/qa/x86-kvm/logcat.txt; exit 1; }
             # Connected tests uninstall their APK; reinstall the verified build for retained UI evidence.
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.deskforge.app.debug

@@ -13,6 +13,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   UI, logcat, and informational frame-statistics evidence.
 - Checksum-pinned X.Org Server 21.1.24 and xorgproto 2025.1 source inputs, reproducible source
   evidence, and the accepted fail-closed DRI3/Present direct-display architecture for milestone 0.9.
+- A debug-only, non-exported isolated display service with bounded pixmap/byte/Present accounting
+  and rejection checks for protected, YUV, multi-layer, oversized, duplicate, and in-flight
+  buffers, plus an app-side public-NDK hardware-buffer capability and zero-copy Unix-socket
+  handle-transfer identity probe.
 - Physical ARM64 tablet qualification gate for graphics, audio, input, thermal behavior, and long sessions.
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.

@@ -17,10 +17,28 @@ string(JSON AUDIO_MICROPHONE_RATE GET "${AUDIO_CONFIG_JSON}" microphone sampleRa
 string(JSON AUDIO_MICROPHONE_CHANNELS GET "${AUDIO_CONFIG_JSON}" microphone channels)
 configure_file(audio_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/audio_config.h" @ONLY)
 
+set(DISPLAY_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../config/display/runtime.json")
+file(READ "${DISPLAY_CONFIG_FILE}" DISPLAY_CONFIG_JSON)
+string(JSON DISPLAY_CONFIG_SCHEMA GET "${DISPLAY_CONFIG_JSON}" schemaVersion)
+if(NOT DISPLAY_CONFIG_SCHEMA EQUAL 1)
+    message(FATAL_ERROR "Unsupported DeskForge display runtime schema")
+endif()
+string(JSON DISPLAY_MAXIMUM_BUFFER_BYTES GET "${DISPLAY_CONFIG_JSON}" buffers maximumBufferBytes)
+string(JSON DISPLAY_MAXIMUM_IMPORTED_PIXMAPS GET "${DISPLAY_CONFIG_JSON}" buffers maximumImportedPixmaps)
+string(JSON DISPLAY_MAXIMUM_AGGREGATE_BYTES GET "${DISPLAY_CONFIG_JSON}" buffers maximumAggregateBytes)
+string(JSON DISPLAY_MAXIMUM_PENDING_PRESENTS GET "${DISPLAY_CONFIG_JSON}" buffers maximumPendingPresents)
+configure_file(
+    direct_display_config.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/direct_display_config.h"
+    @ONLY
+)
+
 add_library(
     deskforge_engine
     SHARED
     audio_bridge.cpp
+    direct_display_probe.cpp
+    direct_display_resources.cpp
     native_egl_presenter.cpp
     native_engine.cpp
     rfb_client.cpp
