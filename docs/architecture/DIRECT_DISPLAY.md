@@ -53,6 +53,27 @@ and 3 queued Present operations. Reservations are released on every error and on
 buffer reference is dropped. The service must remain within its process address-space, descriptor,
 and core-dump limits even when guest code intentionally withholds resources.
 
+## Mandatory allocation proof
+
+DRI3 transports operating-system descriptors, while Android's documented Unix-socket helpers send
+and receive an opaque `AHardwareBuffer` between Android-native endpoints. The public NDK does not
+document a dma-buf descriptor extractor or authorize parsing the underlying native handle. Before
+the DDX or Fedora integration proceeds, an executable spike must therefore prove how an accelerated
+Fedora Mesa client and the isolated Android X server refer to the same allocation without relying on
+private handle layout.
+
+An acceptable design may extend the existing virglrenderer transport so the guest retains an opaque
+resource identity while Android endpoints exchange the corresponding hardware buffer through the
+public NDK API. Any such extension must remain bounded, authenticated, renderer-independent at the
+presentation boundary, and reproducibly built. Treating the first native-handle descriptor as a
+dma-buf, importing undocumented gralloc metadata, or presenting a CPU copy as DRI3 direct display is
+not acceptable. If the spike cannot establish this path, issue #12 must return to architecture
+review before an Android DDX is implemented.
+
+Primary API contracts: [X.Org DRI3](https://cgit.freedesktop.org/xorg/proto/xorgproto/tree/dri3proto.txt),
+[X.Org Present](https://cgit.freedesktop.org/xorg/proto/presentproto/tree/presentproto.txt), and
+[Android native hardware buffers](https://developer.android.com/ndk/reference/group/a-hardware-buffer).
+
 ## Synchronization and presentation
 
 Every Present operation has exactly one acquire-fence ownership transfer. The consumer waits on or
