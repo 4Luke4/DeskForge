@@ -9,9 +9,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- API 34 x86_64 tablet instrumentation on Ubuntu/KVM for fast pull-request feedback, with retained
+  UI, logcat, and informational frame-statistics evidence.
 - Physical ARM64 tablet qualification gate for graphics, audio, input, thermal behavior, and long sessions.
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
+
+### Changed
+
+- Debug artifacts now include an x86_64 native engine solely for KVM-backed QA; release artifacts
+  and the supported product ABI remain ARM64-only.
+
+### Fixed
+
+- Renderer diagnostics now initialize their requested policy before constructing the initial
+  fallback snapshot, preventing an early activity-start crash exposed by emulator instrumentation.
 
 ## [0.8.0] - 2026-09-03
 
