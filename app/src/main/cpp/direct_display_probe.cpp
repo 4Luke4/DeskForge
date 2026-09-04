@@ -1,5 +1,6 @@
 #include <android/hardware_buffer.h>
 #include <jni.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -13,6 +14,19 @@
 namespace {
 
 constexpr uint64_t kBytesPerPixel = 4;
+
+struct HardwareBufferSend {
+    const AHardwareBuffer* buffer;
+    int socket;
+    int result;
+};
+
+void* send_hardware_buffer(void* opaque) {
+    auto* request = static_cast<HardwareBufferSend*>(opaque);
+    request->result = AHardwareBuffer_sendHandleToUnixSocket(request->buffer, request->socket);
+    shutdown(request->socket, SHUT_WR);
+    return nullptr;
+}
 
 bool checked_multiply(uint64_t left, uint64_t right, uint64_t* result) {
     if (result == nullptr || (left != 0 && right > std::numeric_limits<uint64_t>::max() / left)) {
@@ -134,14 +148,21 @@ std::string probe_direct_display() {
         AHardwareBuffer_release(buffer);
         return "unavailable:Private hardware-buffer transport could not be created";
     }
+    HardwareBufferSend send{buffer, transport[0], -1};
+    pthread_t sender{};
+    // The public socket transfer calls may block, so send and receive must run concurrently.
+    if (pthread_create(&sender, nullptr, send_hardware_buffer, &send) != 0) {
+        close(transport[0]);
+        close(transport[1]);
+        AHardwareBuffer_release(buffer);
+        return "unavailable:Private hardware-buffer sender could not be created";
+    }
     AHardwareBuffer* received = nullptr;
-    const int send_result = AHardwareBuffer_sendHandleToUnixSocket(buffer, transport[0]);
-    const int receive_result = send_result == 0
-        ? AHardwareBuffer_recvHandleFromUnixSocket(transport[1], &received)
-        : send_result;
+    const int receive_result = AHardwareBuffer_recvHandleFromUnixSocket(transport[1], &received);
+    const int join_result = pthread_join(sender, nullptr);
     close(transport[0]);
     close(transport[1]);
-    if (send_result != 0 || receive_result != 0 || received == nullptr) {
+    if (send.result != 0 || receive_result != 0 || join_result != 0 || received == nullptr) {
         if (received != nullptr) AHardwareBuffer_release(received);
         AHardwareBuffer_release(buffer);
         return "unavailable:Private hardware-buffer transfer failed";
