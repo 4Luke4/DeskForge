@@ -61,6 +61,11 @@
             android:exported="false"
             android:isolatedProcess="true"
             android:process=":graphics" />
+        <service
+            android:name=".display.DirectDisplayService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":display" />
     </application>
 
 </manifest>

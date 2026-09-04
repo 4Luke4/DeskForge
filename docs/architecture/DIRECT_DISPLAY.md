@@ -1,6 +1,8 @@
 # DRI3/Present Direct-Display Architecture
 
-Status: accepted target for DeskForge 0.9.0; implementation is tracked in issue #12.
+Status: accepted target for DeskForge 0.9.0; implementation is tracked in issue #12. The
+debug-only isolated service and public-NDK buffer probe exist, but no X server or guest-facing
+direct-display transport is active yet.
 
 ## Outcome and terminology
 

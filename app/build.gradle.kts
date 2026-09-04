@@ -125,8 +125,10 @@ android {
                 // x86_64 exists only in debug artifacts so PR instrumentation can use Linux KVM.
                 abiFilters += setOf(toolchainString("abi"), "x86_64")
             }
+            buildConfigField("boolean", "EXPERIMENTAL_DIRECT_DISPLAY", "true")
         }
         release {
+            buildConfigField("boolean", "EXPERIMENTAL_DIRECT_DISPLAY", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
