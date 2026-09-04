@@ -36,15 +36,15 @@ internal class GraphicsTransportController(
     @Volatile
     private var hadReadyRenderer = false
     @Volatile
+    private var requestedRenderer = RendererPreference.AUTO
+    @Volatile
+    private var requestedRefreshRateHz = 0f
+    @Volatile
     private var snapshot = fallback(
         GraphicsTransportStatus.UNAVAILABLE,
         GraphicsFallbackReason.RUNTIME_UNAVAILABLE,
         "Renderer has not been started",
     )
-    @Volatile
-    private var requestedRenderer = RendererPreference.AUTO
-    @Volatile
-    private var requestedRefreshRateHz = 0f
 
     fun start(
         runtimeDirectory: File,

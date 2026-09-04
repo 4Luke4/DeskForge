@@ -20,6 +20,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Debug artifacts now include an x86_64 native engine solely for KVM-backed QA; release artifacts
   and the supported product ABI remain ARM64-only.
 
+### Fixed
+
+- Renderer diagnostics now initialize their requested policy before constructing the initial
+  fallback snapshot, preventing an early activity-start crash exposed by emulator instrumentation.
+
 ## [0.8.0] - 2026-09-03
 
 ### Added

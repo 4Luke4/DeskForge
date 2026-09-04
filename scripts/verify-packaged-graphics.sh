@@ -29,7 +29,7 @@ for package in "$@"; do
     { [[ "${allow_x86_test_engine}" != true ]] ||
       [[ "${package}" != *.apk ]] ||
       grep --extended-regexp --invert-match --quiet \
-        '^lib/x86_64/(libdeskforge_engine|libc\+\+_shared)\.so$' \
+        '^lib/x86_64/(libdeskforge_engine|libandroidx\.graphics\.path)\.so$' \
         <<<"${non_arm64_entries}"; }; then
     printf 'Unexpected non-ARM64 native library in %s:\n%s\n' \
       "${package}" "${non_arm64_entries}" >&2
