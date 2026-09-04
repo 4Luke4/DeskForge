@@ -1,8 +1,8 @@
 # DRI3/Present Direct-Display Architecture
 
 Status: accepted target for DeskForge 0.9.0; implementation is tracked in issue #12. The
-debug-only isolated service and public-NDK buffer probe exist, but no X server or guest-facing
-direct-display transport is active yet.
+debug-only isolated service, bounded resource accounting, and app-side public-NDK buffer probe
+exist, but no X server or guest-facing direct-display transport is active yet.
 
 ## Outcome and terminology
 
@@ -36,6 +36,14 @@ result, and transfers only the minimum descriptors to the isolated service. The 
 receives user documents, signing material, credentials, microphone descriptors, or unrestricted
 filesystem access. X11 accepts no TCP or abstract-namespace listener. Expected peers are checked
 with `SO_PEERCRED`; an unexpected peer or inherited descriptor terminates startup.
+
+Android's [`isolated_app` SELinux policy](https://android.googlesource.com/platform/system/sepolicy/+/refs/heads/main/private/isolated_app_all.te)
+forbids HwBinder access, including the graphics allocator. The API 34 KVM probe confirmed that
+invoking `AHardwareBuffer_isSupported` in the isolated service is therefore a fatal platform-policy
+violation. Hardware-buffer allocation, import, and Android presentation must be owned by a narrowly
+scoped app-UID broker; the isolated display service may hold only validated opaque resource
+identities and transferred synchronization descriptors. The mandatory allocation proof below must
+validate that brokered design before DDX implementation.
 
 X.Org Server 21.1.24 and xorgproto 2025.1 are immutable inputs in
 `config/display/runtime.json`. The Android DDX is DeskForge-owned code. Termux:X11 is a useful

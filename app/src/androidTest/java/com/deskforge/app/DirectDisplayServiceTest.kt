@@ -11,6 +11,7 @@ import android.os.Message
 import android.os.Messenger
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.deskforge.app.display.DirectDisplayCapabilityProbe
 import com.deskforge.app.display.DirectDisplayService
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -25,8 +26,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class DirectDisplayServiceTest {
     @Test
-    fun isolatedServiceQualifiesPublicHardwareBufferContract() {
+    fun appBrokerAndIsolatedServiceQualifyTheirBoundaries() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val bufferCapability = DirectDisplayCapabilityProbe.probe()
+        assertTrue(bufferCapability, bufferCapability.startsWith("available:"))
+        assertTrue(
+            bufferCapability,
+            bufferCapability.contains("hardware-buffer and Unix transfer contract qualified"),
+        )
         val completed = CountDownLatch(1)
         val status = AtomicInteger()
         val detail = AtomicReference("")
@@ -57,7 +64,7 @@ class DirectDisplayServiceTest {
             assertTrue("Direct-display probe timed out", completed.await(10, TimeUnit.SECONDS))
             assertEquals(detail.get(), DirectDisplayService.MSG_AVAILABLE, status.get())
             assertNotEquals(context.applicationInfo.uid, serviceUid.get())
-            assertTrue(detail.get().contains("hardware-buffer and Unix transfer contract qualified"))
+            assertTrue(detail.get().contains("validation and resource accounting qualified"))
         } finally {
             context.unbindService(connection)
         }

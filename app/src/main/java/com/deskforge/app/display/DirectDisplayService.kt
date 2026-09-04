@@ -12,7 +12,7 @@ import android.os.Process
 import android.util.Log
 import com.deskforge.app.BuildConfig
 
-/** Owns experimental direct-display native work in an isolated UID with no app permissions. */
+/** Owns display-protocol validation and resource accounting in an isolated UID. */
 class DirectDisplayService : Service() {
     private val messenger = Messenger(Handler(Looper.getMainLooper(), ::handleMessage))
     private val nativeAvailable = runCatching { System.loadLibrary("deskforge_engine") }.isSuccess

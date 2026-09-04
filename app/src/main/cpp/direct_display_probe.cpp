@@ -98,15 +98,7 @@ bool validate_resource_accounting() {
            resources.pending_present_count() == 0;
 }
 
-std::string probe_direct_display() {
-    static_assert(DESKFORGE_DISPLAY_MAXIMUM_IMPORTED_PIXMAPS > 0);
-    static_assert(DESKFORGE_DISPLAY_MAXIMUM_PENDING_PRESENTS > 0);
-
-    if (!validate_resource_accounting()) {
-        return "unavailable:Display resource accounting self-test failed";
-    }
-    log_probe_stage("resource accounting qualified");
-
+bool validate_descriptor_policy() {
     AHardwareBuffer_Desc request{};
     request.width = 64;
     request.height = 64;
@@ -116,26 +108,48 @@ std::string probe_direct_display() {
                     AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
     AHardwareBuffer_Desc invalid = request;
     invalid.layers = 2;
-    if (validate_buffer(invalid, false)) {
-        return "unavailable:Multi-layer display-buffer validation failed";
-    }
+    if (validate_buffer(invalid, false)) return false;
     invalid = request;
     invalid.format = AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420;
-    if (validate_buffer(invalid, false)) {
-        return "unavailable:YUV display-buffer validation failed";
-    }
+    if (validate_buffer(invalid, false)) return false;
     invalid = request;
     invalid.usage |= AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT;
-    if (validate_buffer(invalid, false)) {
-        return "unavailable:Protected display-buffer validation failed";
-    }
+    if (validate_buffer(invalid, false)) return false;
     invalid = request;
     invalid.width = static_cast<uint32_t>(
         DESKFORGE_DISPLAY_MAXIMUM_BUFFER_BYTES / kBytesPerPixel + 1);
-    if (validate_buffer(invalid, false)) {
-        return "unavailable:Oversized display-buffer validation failed";
+    return !validate_buffer(invalid, false) && validate_buffer(request, false);
+}
+
+std::string probe_isolated_display() {
+    static_assert(DESKFORGE_DISPLAY_MAXIMUM_IMPORTED_PIXMAPS > 0);
+    static_assert(DESKFORGE_DISPLAY_MAXIMUM_PENDING_PRESENTS > 0);
+
+    if (!validate_resource_accounting()) {
+        return "unavailable:Display resource accounting self-test failed";
     }
-    if (!validate_buffer(request, false) || AHardwareBuffer_isSupported(&request) == 0) {
+    log_probe_stage("resource accounting qualified");
+
+    // Android's isolated_app SELinux domain cannot use the graphics allocator. Keep the
+    // service-side probe limited to policy and accounting over broker-owned opaque resources.
+    return validate_descriptor_policy()
+        ? "available:Isolated display validation and resource accounting qualified"
+        : "unavailable:Display-buffer descriptor policy self-test failed";
+}
+
+std::string probe_hardware_buffer_transport() {
+    if (!validate_descriptor_policy()) {
+        return "unavailable:Display-buffer descriptor policy self-test failed";
+    }
+
+    AHardwareBuffer_Desc request{};
+    request.width = 64;
+    request.height = 64;
+    request.layers = 1;
+    request.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    request.usage = AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER |
+                    AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+    if (AHardwareBuffer_isSupported(&request) == 0) {
         return "unavailable:Required Android hardware-buffer usage is unsupported";
     }
     log_probe_stage("hardware-buffer usage supported");
@@ -202,6 +216,15 @@ Java_com_deskforge_app_display_DirectDisplayService_nativeProbe(
     JNIEnv* environment,
     jobject) {
     log_probe_stage("entered native probe");
-    const std::string result = probe_direct_display();
+    const std::string result = probe_isolated_display();
+    return environment->NewStringUTF(result.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_deskforge_app_display_DirectDisplayCapabilityProbe_nativeProbe(
+    JNIEnv* environment,
+    jobject) {
+    log_probe_stage("entered app-side hardware-buffer probe");
+    const std::string result = probe_hardware_buffer_transport();
     return environment->NewStringUTF(result.c_str());
 }
