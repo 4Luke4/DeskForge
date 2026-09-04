@@ -343,6 +343,8 @@ jobs:
             mkdir -p build/qa/x86-kvm
             adb logcat -c
             ./gradlew --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime connectedDebugAndroidTest
+            # Connected tests uninstall their APK; reinstall the verified build for retained UI evidence.
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.deskforge.app.debug
             adb shell monkey -p com.deskforge.app.debug -c android.intent.category.LAUNCHER 1
             adb shell uiautomator dump /sdcard/deskforge-window.xml
