@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.os.Process
 import com.deskforge.app.BuildConfig
 
 /** Owns experimental direct-display native work in an isolated UID with no app permissions. */
@@ -41,7 +42,10 @@ class DirectDisplayService : Service() {
 
     private fun reply(request: Message, status: Int, detail: String) {
         val response = Message.obtain(null, status).apply {
-            data = Bundle().apply { putString(KEY_DETAIL, detail.take(MAX_DETAIL_LENGTH)) }
+            data = Bundle().apply {
+                putString(KEY_DETAIL, detail.take(MAX_DETAIL_LENGTH))
+                putInt(KEY_SERVICE_UID, Process.myUid())
+            }
         }
         runCatching { request.replyTo?.send(response) }
     }
@@ -53,6 +57,7 @@ class DirectDisplayService : Service() {
         const val MSG_AVAILABLE = 2
         const val MSG_FAILED = 3
         const val KEY_DETAIL = "detail"
+        const val KEY_SERVICE_UID = "service_uid"
         private const val AVAILABLE_PREFIX = "available:"
         private const val MAX_DETAIL_LENGTH = 256
     }

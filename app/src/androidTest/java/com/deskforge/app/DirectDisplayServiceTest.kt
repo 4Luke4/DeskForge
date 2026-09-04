@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,9 +30,11 @@ class DirectDisplayServiceTest {
         val completed = CountDownLatch(1)
         val status = AtomicInteger()
         val detail = AtomicReference("")
+        val serviceUid = AtomicInteger()
         val reply = Messenger(Handler(Looper.getMainLooper()) { message ->
             status.set(message.what)
             detail.set(message.data.getString(DirectDisplayService.KEY_DETAIL).orEmpty())
+            serviceUid.set(message.data.getInt(DirectDisplayService.KEY_SERVICE_UID))
             completed.countDown()
             true
         })
@@ -53,6 +56,7 @@ class DirectDisplayServiceTest {
         try {
             assertTrue("Direct-display probe timed out", completed.await(10, TimeUnit.SECONDS))
             assertEquals(detail.get(), DirectDisplayService.MSG_AVAILABLE, status.get())
+            assertNotEquals(context.applicationInfo.uid, serviceUid.get())
             assertTrue(detail.get().contains("hardware-buffer and Unix transfer contract qualified"))
         } finally {
             context.unbindService(connection)
