@@ -46,13 +46,14 @@ See [Architecture](docs/architecture/README.md), [Security model](docs/architect
 ## Verification
 
 Repository policy requires verification through GitHub Actions. The workflows perform reproducible
-PRoot and Venus/VirGL builds, reproducibility, ELF and package-integrity checks, Android and native builds, static analysis, unit tests,
-ARM64 emulator QA on API 34 and the latest available
-stable image (currently API 36), dependency review,
+PRoot and Venus/VirGL builds, reproducibility, ELF and package-integrity checks, Android and native
+builds, static analysis, unit tests, x86_64 instrumentation on an API 34 Linux/KVM tablet AVD, ARM64
+emulator QA on API 34 and the latest available stable image (currently API 36), dependency review,
 CodeQL analysis, artifact checks, and supply-chain validation. Generated screenshots, UI trees,
-and logcat records are retained with emulator jobs. Because emulator provisioning is
-resource-intensive, maintainers dispatch emulator QA manually and only against the protected
-`main` branch; pull requests use the standard CI and security checks as merge evidence.
+frame statistics, and logcat records are retained with emulator jobs. Pull requests use the fast
+x86_64 KVM lane as merge evidence; its debug-only ABI does not change DeskForge's ARM64 product
+contract. Maintainers continue to dispatch the resource-intensive ARM64 emulator QA manually and
+only against the protected `main` branch.
 
 No signing material belongs in the repository. The release workflow accepts ephemeral signing
 secrets only after Play and legal release gates have been approved.

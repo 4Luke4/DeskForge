@@ -261,10 +261,10 @@ jobs:
           app/build/outputs/bundle/release/*.aab
 
       - name: Verify packaged graphics runtime
-        run: >-
-          scripts/verify-packaged-graphics.sh
-          app/build/outputs/apk/debug/*.apk
-          app/build/outputs/bundle/release/*.aab
+        run: |
+          scripts/verify-packaged-graphics.sh --allow-x86-test-engine \
+            app/build/outputs/apk/debug/*.apk
+          scripts/verify-packaged-graphics.sh app/build/outputs/bundle/release/*.aab
 
       - name: Retain reports
         if: always()
@@ -286,6 +286,85 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
+          retention-days: 14
+
+  x86-emulator:
+    name: API 34 x86_64 KVM instrumentation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Export pinned Android toolchain
+        id: toolchain
+        uses: ./.github/actions/export-android-toolchain
+
+      - name: Configure Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: ${{ steps.toolchain.outputs.java_version }}
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install pinned Android build toolchain
+        run: >-
+          sdkmanager
+          "platforms;android-${ANDROID_PLATFORM}"
+          "build-tools;${ANDROID_BUILD_TOOLS}"
+          "ndk;${ANDROID_NDK}"
+          "cmake;${ANDROID_CMAKE}"
+
+      - name: Configure Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Require KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
+      - name: Run instrumentation and capture evidence
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_tablet
+          emulator-options: -no-window -accel on -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot-save
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: |
+            mkdir -p build/qa/x86-kvm
+            adb logcat -c
+            ./gradlew --no-daemon --stacktrace connectedDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime
+            adb shell am force-stop com.deskforge.app.debug
+            adb shell monkey -p com.deskforge.app.debug -c android.intent.category.LAUNCHER 1
+            adb shell uiautomator dump /sdcard/deskforge-window.xml
+            adb pull /sdcard/deskforge-window.xml build/qa/x86-kvm/window.xml
+            adb exec-out screencap -p > build/qa/x86-kvm/screenshot.png
+            adb shell dumpsys gfxinfo com.deskforge.app.debug framestats \
+              > build/qa/x86-kvm/gfxinfo-framestats.txt
+            adb shell getprop ro.boot.qemu.cpuvulkan.version \
+              > build/qa/x86-kvm/emulator-cpu-vulkan.txt
+            adb logcat -d -v threadtime > build/qa/x86-kvm/logcat.txt
+
+      - name: Retain KVM emulator evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: x86-kvm-emulator-evidence
+          path: |
+            build/qa/x86-kvm/
+            app/build/reports/androidTests/
+          if-no-files-found: warn
           retention-days: 14
 
   proot-runtime:

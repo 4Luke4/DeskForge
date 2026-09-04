@@ -121,6 +121,10 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            ndk {
+                // x86_64 exists only in debug artifacts so PR instrumentation can use Linux KVM.
+                abiFilters += setOf(toolchainString("abi"), "x86_64")
+            }
         }
         release {
             isMinifyEnabled = true

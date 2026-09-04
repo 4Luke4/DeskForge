@@ -6,7 +6,7 @@ and an explicit maintainer decision.
 
 | Gate | Required evidence | Merge blocker | Production blocker |
 | --- | --- | --- | --- |
-| Pull-request verification | Required CI, CodeQL, and dependency review jobs pass | Yes | Yes |
+| Pull-request verification | Required CI, API 34 x86_64 Linux/KVM instrumentation, CodeQL, and dependency review jobs pass | Yes | Yes |
 | Emulator verification | Manually dispatched API 34/latest-stable ARM64 emulator jobs pass on protected `main` | No | Yes |
 | Runtime packaging | Two byte-identical API 34 ARM64 PRoot and Venus/VirGL builds; ELF/APK/AAB checks; retained PRoot/talloc/virglrenderer/libepoxy source and notices; protected-main emulator smoke evidence | No | Yes |
 | Fedora delivery | Signed-image/RPM verification and every generated Play asset pack below its enforced limit | No | Yes |
@@ -26,11 +26,13 @@ separately packaged PRoot executable fails closed. Google Play upload remains a 
 human-controlled operation outside this milestone.
 
 Graphics and audio merge evidence requires the exact-commit Fedora asset workflow to validate the
-Mesa, glx-utils, and PipeWire inventories and schema-5 guest configuration. GitHub's no-audio
-emulator can verify permission, foreground-service, and failure behavior but cannot qualify acoustic
-playback or capture. Physical tablets must retain route, focus, denial, one-time grant, persistent
-grant, revocation, background capture, notification stop, and post-disable silence evidence before
-production approval.
+Mesa, glx-utils, and PipeWire inventories and schema-5 guest configuration. The x86_64 KVM lane is
+intended to catch application and instrumentation regressions quickly; it does not execute the
+ARM64 PRoot runtime and cannot qualify guest rendering, tablet GPU behavior, refresh-rate claims, or
+production packaging. GitHub's no-audio emulators can verify permission, foreground-service, and
+failure behavior but cannot qualify acoustic playback or capture. Physical tablets must retain
+route, focus, denial, one-time grant, persistent grant, revocation, background capture, notification
+stop, and post-disable silence evidence before production approval.
 
 Fedora asset preparation is manually dispatched and has a 35-minute hard timeout. It verifies the
 pinned image before mounting it read-only, applies signed RPMs through an ephemeral writable overlay,

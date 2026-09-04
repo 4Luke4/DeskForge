@@ -2,9 +2,12 @@
 
 GitHub-hosted ARM64 emulator QA is a release-readiness requirement. Because provisioning is
 resource-intensive, maintainers dispatch it manually and its jobs are restricted to the protected
-`main` branch. Pull requests rely on the standard CI and security checks instead. Emulator QA does
-not substitute for production qualification on physical tablets. Record model identifiers and
-evidence links; do not store device serial numbers or user data in the repository.
+`main` branch. Pull requests run the application instrumentation suite on an API 34 x86_64 tablet
+AVD with Linux/KVM; the ARM64-only PRoot smoke case is excluded from that lane. Its retained frame
+statistics are regression evidence for DeskForge code, not a tablet GPU benchmark or a basis for
+60/90/120 Hz claims. Neither emulator lane substitutes for production qualification on physical
+tablets. Record model identifiers and evidence links; do not store device serial numbers or user
+data in the repository.
 
 | Area | Required scenarios | Acceptance evidence |
 | --- | --- | --- |
