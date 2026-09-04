@@ -9,6 +9,7 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.Process
+import android.util.Log
 import com.deskforge.app.BuildConfig
 
 /** Owns experimental direct-display native work in an isolated UID with no app permissions. */
@@ -17,7 +18,12 @@ class DirectDisplayService : Service() {
     private val nativeAvailable = runCatching { System.loadLibrary("deskforge_engine") }.isSuccess
 
     override fun onBind(intent: Intent?): IBinder? =
-        if (BuildConfig.EXPERIMENTAL_DIRECT_DISPLAY) messenger.binder else null
+        if (BuildConfig.EXPERIMENTAL_DIRECT_DISPLAY) {
+            Log.i(LOG_TAG, "Binding isolated direct-display probe service")
+            messenger.binder
+        } else {
+            null
+        }
 
     private fun handleMessage(message: Message): Boolean {
         if (message.what != MSG_PROBE) return false
@@ -30,8 +36,10 @@ class DirectDisplayService : Service() {
             return true
         }
 
+        Log.i(LOG_TAG, "Starting native direct-display capability probe")
         val result = runCatching { nativeProbe() }
             .getOrDefault("unavailable:Direct-display capability probe failed")
+        Log.i(LOG_TAG, "Native direct-display capability probe completed")
         if (result.startsWith(AVAILABLE_PREFIX)) {
             reply(message, MSG_AVAILABLE, result.substringAfter(':'))
         } else {
@@ -60,5 +68,6 @@ class DirectDisplayService : Service() {
         const val KEY_SERVICE_UID = "service_uid"
         private const val AVAILABLE_PREFIX = "available:"
         private const val MAX_DETAIL_LENGTH = 256
+        private const val LOG_TAG = "DeskForgeDisplay"
     }
 }

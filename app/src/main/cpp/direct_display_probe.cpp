@@ -1,4 +1,5 @@
 #include <android/hardware_buffer.h>
+#include <android/log.h>
 #include <jni.h>
 #include <pthread.h>
 #include <sys/socket.h>
@@ -14,6 +15,11 @@
 namespace {
 
 constexpr uint64_t kBytesPerPixel = 4;
+constexpr const char* kLogTag = "DeskForgeDisplay";
+
+void log_probe_stage(const char* stage) {
+    __android_log_print(ANDROID_LOG_INFO, kLogTag, "Direct-display probe: %s", stage);
+}
 
 struct HardwareBufferSend {
     const AHardwareBuffer* buffer;
@@ -99,6 +105,7 @@ std::string probe_direct_display() {
     if (!validate_resource_accounting()) {
         return "unavailable:Display resource accounting self-test failed";
     }
+    log_probe_stage("resource accounting qualified");
 
     AHardwareBuffer_Desc request{};
     request.width = 64;
@@ -131,11 +138,14 @@ std::string probe_direct_display() {
     if (!validate_buffer(request, false) || AHardwareBuffer_isSupported(&request) == 0) {
         return "unavailable:Required Android hardware-buffer usage is unsupported";
     }
+    log_probe_stage("hardware-buffer usage supported");
 
     AHardwareBuffer* buffer = nullptr;
+    log_probe_stage("allocating hardware buffer");
     if (AHardwareBuffer_allocate(&request, &buffer) != 0 || buffer == nullptr) {
         return "unavailable:Android hardware-buffer allocation failed";
     }
+    log_probe_stage("hardware buffer allocated");
     AHardwareBuffer_Desc allocated{};
     AHardwareBuffer_describe(buffer, &allocated);
     if (!validate_buffer(allocated, true)) {
@@ -158,7 +168,9 @@ std::string probe_direct_display() {
         return "unavailable:Private hardware-buffer sender could not be created";
     }
     AHardwareBuffer* received = nullptr;
+    log_probe_stage("receiving hardware-buffer handle");
     const int receive_result = AHardwareBuffer_recvHandleFromUnixSocket(transport[1], &received);
+    log_probe_stage("hardware-buffer receive returned");
     const int join_result = pthread_join(sender, nullptr);
     close(transport[0]);
     close(transport[1]);
@@ -189,6 +201,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_deskforge_app_display_DirectDisplayService_nativeProbe(
     JNIEnv* environment,
     jobject) {
+    log_probe_stage("entered native probe");
     const std::string result = probe_direct_display();
     return environment->NewStringUTF(result.c_str());
 }
