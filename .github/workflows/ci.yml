@@ -343,8 +343,7 @@ jobs:
           script: |
             mkdir -p build/qa/x86-kvm
             adb logcat -c
-            ./gradlew --no-daemon --stacktrace connectedDebugAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime
+            ./gradlew --no-daemon --stacktrace -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.deskforge.app.RequiresArm64Runtime connectedDebugAndroidTest
             adb shell am force-stop com.deskforge.app.debug
             adb shell monkey -p com.deskforge.app.debug -c android.intent.category.LAUNCHER 1
             adb shell uiautomator dump /sdcard/deskforge-window.xml
