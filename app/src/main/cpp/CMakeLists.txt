@@ -38,6 +38,7 @@ add_library(
     SHARED
     audio_bridge.cpp
     direct_display_probe.cpp
+    direct_display_resources.cpp
     native_egl_presenter.cpp
     native_engine.cpp
     rfb_client.cpp

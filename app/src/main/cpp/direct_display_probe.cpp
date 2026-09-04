@@ -6,6 +6,7 @@
 #include <string>
 
 #include "direct_display_config.h"
+#include "direct_display_resources.h"
 
 namespace {
 
@@ -41,9 +42,47 @@ bool validate_buffer(const AHardwareBuffer_Desc& descriptor, bool allocated) {
            bytes <= DESKFORGE_DISPLAY_MAXIMUM_AGGREGATE_BYTES;
 }
 
+bool validate_resource_accounting() {
+    DirectDisplayResources resources;
+    if (resources.import_buffer(0, 1) || resources.import_buffer(1, 0) ||
+        resources.import_buffer(1, DESKFORGE_DISPLAY_MAXIMUM_BUFFER_BYTES + 1)) {
+        return false;
+    }
+    for (uint64_t token = 1; token <= 4; ++token) {
+        if (!resources.import_buffer(token, DESKFORGE_DISPLAY_MAXIMUM_BUFFER_BYTES)) return false;
+    }
+    if (resources.import_buffer(5, 1) ||
+        resources.aggregate_bytes() != DESKFORGE_DISPLAY_MAXIMUM_AGGREGATE_BYTES) {
+        return false;
+    }
+    resources.reset();
+
+    for (uint64_t token = 1; token <= DESKFORGE_DISPLAY_MAXIMUM_IMPORTED_PIXMAPS; ++token) {
+        if (!resources.import_buffer(token, 1)) return false;
+    }
+    if (resources.import_buffer(DESKFORGE_DISPLAY_MAXIMUM_IMPORTED_PIXMAPS + 1, 1)) return false;
+    resources.reset();
+
+    if (!resources.import_buffer(1, 1) || resources.import_buffer(1, 1)) return false;
+    for (uint32_t pending = 0; pending < DESKFORGE_DISPLAY_MAXIMUM_PENDING_PRESENTS; ++pending) {
+        if (!resources.queue_present(1)) return false;
+    }
+    if (resources.queue_present(1) || resources.release_buffer(1)) return false;
+    for (uint32_t pending = 0; pending < DESKFORGE_DISPLAY_MAXIMUM_PENDING_PRESENTS; ++pending) {
+        if (!resources.complete_present(1)) return false;
+    }
+    return !resources.complete_present(1) && resources.release_buffer(1) &&
+           resources.imported_buffer_count() == 0 && resources.aggregate_bytes() == 0 &&
+           resources.pending_present_count() == 0;
+}
+
 std::string probe_direct_display() {
     static_assert(DESKFORGE_DISPLAY_MAXIMUM_IMPORTED_PIXMAPS > 0);
     static_assert(DESKFORGE_DISPLAY_MAXIMUM_PENDING_PRESENTS > 0);
+
+    if (!validate_resource_accounting()) {
+        return "unavailable:Display resource accounting self-test failed";
+    }
 
     AHardwareBuffer_Desc request{};
     request.width = 64;
