@@ -40,6 +40,7 @@ Android App Bundle. Installation is staged and atomically activated so an interr
 cannot replace a working workspace.
 
 See [Architecture](docs/architecture/README.md), [Security model](docs/architecture/THREAT_MODEL.md),
+[0.9 direct-display target](docs/architecture/DIRECT_DISPLAY.md),
 [privacy boundaries](docs/legal/PRIVACY.md), [release readiness](docs/release/READINESS.md), and
 [third-party notices](docs/legal/THIRD_PARTY_NOTICES.md).
 

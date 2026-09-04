@@ -122,6 +122,41 @@ jobs:
           done < <(jq -r '.patches[]' config/graphics/runtime.json)
           test -x scripts/build-graphics-runtime-android.sh
           test -x scripts/verify-graphics-runtime.sh
+          android_abi="$(sed -n 's/^abi=//p' config/android/toolchain.properties)"
+          minimum_api="$(sed -n 's/^minSdk=//p' config/android/toolchain.properties)"
+          jq -e --arg android_abi "$android_abi" --argjson minimum_api "$minimum_api" '
+            .schemaVersion == 1 and
+            .server.name == "X.Org Server" and .server.version == "21.1.24" and
+            (.server.sourceUrl | startswith("https://xorg.freedesktop.org/")) and
+            (.server.sizeBytes > 0) and (.server.sha256 | test("^[a-f0-9]{64}$")) and
+            .buildDependencies.xorgproto.version == "2025.1" and
+            (.buildDependencies.xorgproto.sourceUrl |
+              startswith("https://xorg.freedesktop.org/")) and
+            (.buildDependencies.xorgproto.sizeBytes > 0) and
+            (.buildDependencies.xorgproto.sha256 | test("^[a-f0-9]{64}$")) and
+            .plannedBinary.fileName == "libdeskforge_display.so" and
+            .plannedBinary.abi == $android_abi and .plannedBinary.minimumApi == $minimum_api and
+            .transport.socketName == "x11.sock" and .transport.filesystemMode == "0600" and
+            .transport.allowTcp == false and .transport.allowAbstractNamespace == false and
+            .transport.startupTimeoutMs == 10000 and
+            .buffers.formats == [
+              "AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM",
+              "AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM"
+            ] and
+            .buffers.maximumBufferBytes == 134217728 and
+            .buffers.maximumImportedPixmaps == 64 and
+            .buffers.maximumAggregateBytes == 536870912 and
+            .buffers.maximumPendingPresents == 3 and
+            .buffers.allowProtectedContent == false and .buffers.allowYuv == false and
+            .buffers.allowMultiplePlanes == false and
+            .clipboard.manualOnly == true and .clipboard.maximumUtf8Bytes == 1048576 and
+            (.patches | type) == "array" and
+            all(.patches[]; startswith("config/display/patches/"))
+          ' config/display/runtime.json
+          while IFS= read -r display_patch; do
+            test -f "$display_patch"
+          done < <(jq -r '.patches[]' config/display/runtime.json)
+          test -x scripts/package-display-source.sh
 
       - name: Install Fedora pipeline fixture tools
         run: |
@@ -190,6 +225,32 @@ jobs:
           path: |
             build/graphics/first/libdeskforge_graphics.so
             build/graphics/first/libdeskforge_venus_server.so
+          if-no-files-found: error
+          retention-days: 14
+
+  display-source:
+    name: Pinned X.Org display sources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build independent source bundles
+        run: |
+          scripts/package-display-source.sh \
+            build/display/first/deskforge-display-source.tar.gz build/display/first/work
+          scripts/package-display-source.sh \
+            build/display/second/deskforge-display-source.tar.gz build/display/second/work
+          cmp \
+            build/display/first/deskforge-display-source.tar.gz \
+            build/display/second/deskforge-display-source.tar.gz
+
+      - name: Retain verified source bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deskforge-display-source
+          path: build/display/first/deskforge-display-source.tar.gz
           if-no-files-found: error
           retention-days: 14
 

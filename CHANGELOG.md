@@ -11,6 +11,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - API 34 x86_64 tablet instrumentation on Ubuntu/KVM for fast pull-request feedback, with retained
   UI, logcat, and informational frame-statistics evidence.
+- Checksum-pinned X.Org Server 21.1.24 and xorgproto 2025.1 source inputs, reproducible source
+  evidence, and the accepted fail-closed DRI3/Present direct-display architecture for milestone 0.9.
 - Physical ARM64 tablet qualification gate for graphics, audio, input, thermal behavior, and long sessions.
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.
