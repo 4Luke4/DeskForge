@@ -67,5 +67,6 @@ tar --extract --xz --to-stdout \
   > "${work_directory}/corresponding-source/COPYING.Xorg-server"
 
 tar --directory "${work_directory}/corresponding-source" --sort=name --mtime='@1683936000' \
-  --owner=0 --group=0 --numeric-owner --format=posix --create --file=- . | \
+  --owner=0 --group=0 --numeric-owner --format=posix \
+  --pax-option=delete=atime,delete=ctime --create --file=- . | \
   gzip -n > "${output_archive}"
