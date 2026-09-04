@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "server": {
+    "name": "X.Org Server",
+    "version": "21.1.24",
+    "sourceUrl": "https://xorg.freedesktop.org/archive/individual/xserver/xorg-server-21.1.24.tar.xz",
+    "sizeBytes": 5072780,
+    "sha256": "1a4eb36ca65cc3b1b936566d677a9786e13c11cd5806e951ac55f3f5ce3984af"
+  },
+  "buildDependencies": {
+    "xorgproto": {
+      "version": "2025.1",
+      "sourceUrl": "https://xorg.freedesktop.org/archive/individual/proto/xorgproto-2025.1.tar.xz",
+      "sizeBytes": 766932,
+      "sha256": "56898c716c0578df8a2d828c9c3e5c528277705c0484381a81960fe1a67668e8"
+    }
+  },
+  "plannedBinary": {
+    "fileName": "libdeskforge_display.so",
+    "abi": "arm64-v8a",
+    "minimumApi": 34
+  },
+  "transport": {
+    "socketName": "x11.sock",
+    "filesystemMode": "0600",
+    "allowTcp": false,
+    "allowAbstractNamespace": false,
+    "startupTimeoutMs": 10000
+  },
+  "buffers": {
+    "formats": [
+      "AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM",
+      "AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM"
+    ],
+    "maximumBufferBytes": 134217728,
+    "maximumImportedPixmaps": 64,
+    "maximumAggregateBytes": 536870912,
+    "maximumPendingPresents": 3,
+    "allowProtectedContent": false,
+    "allowYuv": false,
+    "allowMultiplePlanes": false
+  },
+  "clipboard": {
+    "manualOnly": true,
+    "maximumUtf8Bytes": 1048576
+  },
+  "patches": []
+}

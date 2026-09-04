@@ -69,3 +69,12 @@ with or endorsed by the Fedora Project or XFCE project.
 - License: MIT
 - Integration: separately executed `glxinfo` inside Fedora before the desktop starts
 - Source: exact Fedora `mesa-demos` source RPM is retained with every prepared payload
+
+## X.Org Server and xorgproto
+
+- Projects: <https://www.x.org/> and <https://gitlab.freedesktop.org/xorg/proto/xorgproto>
+- Pinned design inputs: X.Org Server 21.1.24 and xorgproto 2025.1
+- License: upstream MIT-style X.Org terms; exact X.Org Server text is retained with the source bundle
+- Current integration: source and license evidence only; no Android display-server binary ships yet
+- Planned integration: separately isolated Android display service with an original DeskForge
+  KDrive/DDX; no Termux:X11 code is copied or linked

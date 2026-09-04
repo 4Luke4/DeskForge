@@ -46,6 +46,11 @@ from a guest application or direct display scanout. Xvnc/RFB remains the private
 End-to-end X11 buffer sharing is a later architecture milestone and sustained 60/90/120 Hz remains
 gated on the physical-device protocol.
 
+The accepted DeskForge 0.9 target is documented in
+[DRI3/Present Direct-Display Architecture](DIRECT_DISPLAY.md). Its source manifest and security
+limits are reviewable now, but they do not change the active Xvnc/RFB runtime until the isolated
+server, DDX, Fedora integration, and qualification stages land.
+
 ## Ownership boundaries
 
 - Kotlin/Compose owns application state, navigation, permissions, accessibility, and user consent.

@@ -64,6 +64,17 @@ approved documents, uses private Unix sockets, and exports no Android service or
 - **Sensitive diagnostics:** structured messages without user document contents, environment
   secrets, or signing data.
 
+## Direct-display milestone boundary
+
+The accepted 0.9 architecture introduces an isolated X.Org display service, DRI3 hardware-buffer
+imports, Present fences, and a SurfaceControl child layer. Before that path can become active, its
+implementation must preserve the authenticated private-listener model and add fail-closed format,
+geometry, allocation, queue-depth, and fence-ownership validation from
+`config/display/runtime.json`. Protected, YUV, multi-planar, oversized, or unsynchronized buffers
+remain outside the trust boundary. Direct-path failure must end the session; RFB remains an explicit
+next-session recovery choice rather than an automatic downgrade. The complete target and teardown
+contract is in `docs/architecture/DIRECT_DISPLAY.md`.
+
 ## Release validation
 
 The production threat model must be revisited after the physical-device matrix is complete. Google
