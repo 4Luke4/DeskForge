@@ -53,7 +53,7 @@ class DirectDisplayServiceTest {
         try {
             assertTrue("Direct-display probe timed out", completed.await(10, TimeUnit.SECONDS))
             assertEquals(detail.get(), DirectDisplayService.MSG_AVAILABLE, status.get())
-            assertTrue(detail.get().contains("hardware-buffer contract qualified"))
+            assertTrue(detail.get().contains("hardware-buffer and Unix transfer contract qualified"))
         } finally {
             context.unbindService(connection)
         }

@@ -15,7 +15,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   evidence, and the accepted fail-closed DRI3/Present direct-display architecture for milestone 0.9.
 - A debug-only, non-exported isolated display service with a native public-NDK hardware-buffer
   capability probe, bounded pixmap/byte/Present accounting, and rejection checks for protected,
-  YUV, multi-layer, oversized, duplicate, and in-flight buffers.
+  YUV, multi-layer, oversized, duplicate, and in-flight buffers, including a zero-copy Unix-socket
+  handle-transfer identity check.
 - Physical ARM64 tablet qualification gate for graphics, audio, input, thermal behavior, and long sessions.
 - Human-review gate for every non-English translation.
 - Google Play policy, paid-listing, privacy, and signing release gates.

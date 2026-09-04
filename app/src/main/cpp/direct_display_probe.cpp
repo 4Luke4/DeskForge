@@ -1,5 +1,7 @@
 #include <android/hardware_buffer.h>
 #include <jni.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include <cstdint>
 #include <limits>
@@ -122,11 +124,42 @@ std::string probe_direct_display() {
     }
     AHardwareBuffer_Desc allocated{};
     AHardwareBuffer_describe(buffer, &allocated);
-    const bool valid = validate_buffer(allocated, true);
+    if (!validate_buffer(allocated, true)) {
+        AHardwareBuffer_release(buffer);
+        return "unavailable:Android returned an invalid hardware-buffer descriptor";
+    }
+
+    int transport[2] = {-1, -1};
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, transport) != 0) {
+        AHardwareBuffer_release(buffer);
+        return "unavailable:Private hardware-buffer transport could not be created";
+    }
+    AHardwareBuffer* received = nullptr;
+    const int send_result = AHardwareBuffer_sendHandleToUnixSocket(buffer, transport[0]);
+    const int receive_result = send_result == 0
+        ? AHardwareBuffer_recvHandleFromUnixSocket(transport[1], &received)
+        : send_result;
+    close(transport[0]);
+    close(transport[1]);
+    if (send_result != 0 || receive_result != 0 || received == nullptr) {
+        if (received != nullptr) AHardwareBuffer_release(received);
+        AHardwareBuffer_release(buffer);
+        return "unavailable:Private hardware-buffer transfer failed";
+    }
+
+    AHardwareBuffer_Desc received_descriptor{};
+    AHardwareBuffer_describe(received, &received_descriptor);
+    uint64_t sent_id = 0;
+    uint64_t received_id = 0;
+    const bool valid = validate_buffer(received_descriptor, true) &&
+                       AHardwareBuffer_getId(buffer, &sent_id) == 0 &&
+                       AHardwareBuffer_getId(received, &received_id) == 0 &&
+                       sent_id != 0 && sent_id == received_id;
+    AHardwareBuffer_release(received);
     AHardwareBuffer_release(buffer);
     return valid
-        ? "available:Public Android hardware-buffer contract qualified"
-        : "unavailable:Android returned an invalid hardware-buffer descriptor";
+        ? "available:Public Android hardware-buffer and Unix transfer contract qualified"
+        : "unavailable:Transferred Android hardware-buffer identity was invalid";
 }
 
 }  // namespace
